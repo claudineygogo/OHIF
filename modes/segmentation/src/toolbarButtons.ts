@@ -1193,6 +1193,17 @@ const toolbarButtons: Button[] = [
       ],
     },
   },
+  {
+    id: 'SubmitContour',
+    uiType: 'ohif.toolButton',
+    props: {
+      icon: 'tool-more-menu',
+      label: 'Submit Contour',
+      tooltip: 'Submit Contour for Grading',
+      commands: 'submitContourForGrading',
+      evaluate: 'evaluate.action',
+    },
+  },
 ];
 
 export default toolbarButtons;

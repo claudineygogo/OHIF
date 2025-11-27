@@ -43,6 +43,9 @@ const commandsModule = ({
   commandsManager,
   extensionManager,
 }: Types.Extensions.ExtensionParams): Types.Extensions.CommandsModule => {
+  // Store the reference segmentation ID globally within the module scope
+  let storedReferenceSegmentationId: string | null = null;
+
   const {
     customizationService,
     measurementService,
@@ -66,8 +69,8 @@ const commandsModule = ({
      */
     addDisplaySetAsLayer: ({ viewportId, displaySetInstanceUID, removeFirst = false }) => {
       if (!viewportId) {
-          const { activeViewportId } = servicesManager.services.viewportGridService.getState();
-          viewportId = activeViewportId;
+        const { activeViewportId } = servicesManager.services.viewportGridService.getState();
+        viewportId = activeViewportId;
       }
 
       if (!viewportId || !displaySetInstanceUID) {
@@ -761,6 +764,329 @@ const commandsModule = ({
 
       setTimeout(() => actions.scrollActiveThumbnailIntoView(), 0);
     },
+
+    setReferenceSegmentationId: ({ segmentationId }) => {
+      storedReferenceSegmentationId = segmentationId;
+      console.log('Reference Segmentation ID stored:', storedReferenceSegmentationId);
+    },
+
+    submitContourForGrading: async () => {
+      const { viewportGridService, segmentationService } = servicesManager.services;
+
+      try {
+        console.log('Sending data to Scorer...');
+
+        const { activeViewportId } = viewportGridService.getState();
+
+        if (!activeViewportId) {
+          uiNotificationService.show({
+            title: 'Submit Contour',
+            message: 'No active viewport found.',
+            type: 'error',
+            duration: 3000,
+          });
+          return;
+        }
+
+        // Try to get the active segmentation first
+        let segmentationId;
+        const activeSegmentation = segmentationService.getActiveSegmentation(activeViewportId);
+
+        if (activeSegmentation) {
+          segmentationId = activeSegmentation.segmentationId;
+        } else {
+          // Fallback: Get the first segmentation that is NOT the stored reference
+          const segmentationRepresentations =
+            segmentationService.getSegmentationRepresentations(activeViewportId);
+
+          if (!segmentationRepresentations || segmentationRepresentations.length === 0) {
+            uiNotificationService.show({
+              title: 'Submit Contour',
+              message: 'No segmentation found. Please create a segmentation first.',
+              type: 'warning',
+              duration: 3000,
+            });
+            return;
+          }
+
+          // Find a segmentation that is NOT the reference
+          const userRepresentation = segmentationRepresentations.find(
+            rep => rep.segmentationId !== storedReferenceSegmentationId
+          );
+
+          if (userRepresentation) {
+            segmentationId = userRepresentation.segmentationId;
+          } else {
+            // If only reference exists, warn the user? Or just use it?
+            // If the user hasn't created a layer, they might be trying to submit the reference?
+            // But we should probably default to the first one if no other choice.
+            segmentationId = segmentationRepresentations[0].segmentationId;
+          }
+        }
+
+        console.log('Submitting segmentation ID:', segmentationId);
+
+        if (segmentationId === storedReferenceSegmentationId) {
+          console.warn('WARNING: Submitting the Reference Segmentation! This might be unintended.');
+        }
+
+        const segmentation = segmentationService.getSegmentation(segmentationId);
+        const representationType = segmentation?.representationData?.Labelmap
+          ? 'Labelmap'
+          : 'Contour'; // Simplified check
+
+        if (representationType === 'Contour') {
+          uiNotificationService.show({
+            title: 'Contour Segmentation Detected',
+            message:
+              'Contour segmentations are not yet supported. Please use Labelmap tools (Brush, Circle, etc.).',
+            type: 'warning',
+            duration: 5000,
+          });
+          return;
+        }
+
+        // Get the cornerstone segmentation to check if it's stack or volume based
+        const csSegmentation = segmentationService.getSegmentation(segmentationId);
+        const labelmapData = csSegmentation?.representationData?.Labelmap;
+
+        // Check if we need to convert from stack to volume
+        if (labelmapData && labelmapData.imageIds && !labelmapData.volumeId) {
+          console.log('Stack-based labelmap detected, converting to volume...');
+          uiNotificationService.show({
+            title: 'Converting Segmentation',
+            message: 'Converting stack-based segmentation to volume. Please wait...',
+            type: 'info',
+            duration: 3000,
+          });
+
+          // Import the conversion helper from cornerstone tools
+          const { segmentation: cstSegmentation } = await import('@cornerstonejs/tools');
+          await cstSegmentation.helpers.convertStackToVolumeLabelmap(csSegmentation);
+
+          console.log('Conversion complete');
+        }
+
+        // Now get the labelmap volume
+        const labelmapVolume = segmentationService.getLabelmapVolume(segmentationId);
+
+        if (!labelmapVolume) {
+          uiNotificationService.show({
+            title: 'Submit Contour',
+            message: 'Could not retrieve segmentation data after conversion.',
+            type: 'error',
+            duration: 5000,
+          });
+          console.error('No labelmap volume found after conversion');
+          return;
+        }
+
+        // Extract scalar data
+        let scalarData;
+        if (labelmapVolume.voxelManager) {
+          scalarData = labelmapVolume.voxelManager.getCompleteScalarDataArray();
+        } else {
+          scalarData = labelmapVolume.scalarData;
+        }
+
+        if (!scalarData || scalarData.length === 0) {
+          uiNotificationService.show({
+            title: 'Submit Contour',
+            message: 'Segmentation data is empty.',
+            type: 'warning',
+            duration: 3000,
+          });
+          return;
+        }
+
+        console.log(`Extracted segmentation data: ${scalarData.length} voxels`);
+
+        // Calculate origin_slice_index (first slice with data)
+        const { dimensions } = labelmapVolume;
+        const sliceSize = dimensions[0] * dimensions[1];
+        const numSlices = dimensions[2];
+        let origin_slice_index = 0;
+
+        for (let z = 0; z < numSlices; z++) {
+          const sliceStart = z * sliceSize;
+          const sliceEnd = sliceStart + sliceSize;
+          let hasData = false;
+          // Check if any voxel in this slice is non-zero
+          for (let i = sliceStart; i < sliceEnd; i++) {
+            if (scalarData[i] !== 0) {
+              hasData = true;
+              break;
+            }
+          }
+          if (hasData) {
+            origin_slice_index = z;
+            break;
+          }
+        }
+
+        console.log('Detected origin_slice_index:', origin_slice_index);
+
+        // Compress data: Extract indices of non-zero voxels
+        const nonZeroIndices = [];
+        for (let i = 0; i < scalarData.length; i++) {
+          if (scalarData[i] !== 0) {
+            nonZeroIndices.push(i);
+          }
+        }
+        console.log(`Compressed data: ${nonZeroIndices.length} non-zero voxels`);
+
+        const payload = {
+          non_zero_indices: nonZeroIndices,
+          origin_slice_index: origin_slice_index,
+          timestamp: new Date().toISOString(),
+          reference_mask_data: 'placeholder_for_backend_lookup',
+        };
+
+        const response = await fetch('http://localhost:5000/grade_submission', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const diceScore = result.dice_score;
+        const referenceData = result.reference_data;
+
+        console.log(`Score Received: ${diceScore}`);
+        console.log('Reference Data Received:', referenceData ? 'Yes' : 'No');
+
+        // Store the dice score in a global state for the ScorePanel to access
+        (window as any).ohifDiceScore = diceScore;
+
+        // --- REVEAL REFERENCE CONTOUR ---
+        if (referenceData && referenceData.non_zero_indices) {
+          try {
+            console.log('Revealing pre-loaded reference segmentation...');
+
+            const { activeViewportId } = viewportGridService.getState();
+
+            // Use the stored reference segmentation ID
+            if (storedReferenceSegmentationId) {
+              console.log(
+                `Using stored reference segmentation ID: ${storedReferenceSegmentationId}`
+              );
+
+              // Check if representation already exists
+              const referenceReps = segmentationService.getSegmentationRepresentations(
+                activeViewportId,
+                { segmentationId: storedReferenceSegmentationId }
+              );
+
+              if (referenceReps.length === 0) {
+                console.log('Adding reference segmentation representation...');
+                await segmentationService.addSegmentationRepresentation(activeViewportId, {
+                  segmentationId: storedReferenceSegmentationId,
+                });
+              } else {
+                console.log('Reference segmentation representation already exists.');
+              }
+
+              // Reveal segment 1 (assuming single segment for reference)
+              const referenceSegmentation = segmentationService.getSegmentation(
+                storedReferenceSegmentationId
+              );
+              if (referenceSegmentation && referenceSegmentation.segments) {
+                const segmentIndices = Object.keys(referenceSegmentation.segments);
+                for (const segmentIndex of segmentIndices) {
+                  segmentationService.setSegmentVisibility(
+                    activeViewportId,
+                    storedReferenceSegmentationId,
+                    parseInt(segmentIndex),
+                    true
+                  );
+                  // Set to GREEN
+                  segmentationService.setSegmentColor(
+                    activeViewportId,
+                    storedReferenceSegmentationId,
+                    parseInt(segmentIndex),
+                    [0, 255, 0, 255]
+                  );
+                }
+                console.log(`Reference contour revealed: ${storedReferenceSegmentationId}`);
+              }
+            } else {
+              console.warn('No stored reference segmentation ID found.');
+            }
+
+            // Also ensure the USER segmentation is RED and VISIBLE
+            const userSegmentation = segmentationService.getSegmentation(segmentationId);
+            if (userSegmentation && userSegmentation.segments) {
+              // Check if representation already exists
+              const userReps = segmentationService.getSegmentationRepresentations(
+                activeViewportId,
+                { segmentationId: segmentationId }
+              );
+
+              if (userReps.length === 0) {
+                console.log('Adding user segmentation representation...');
+                await segmentationService.addSegmentationRepresentation(activeViewportId, {
+                  segmentationId: segmentationId,
+                });
+              } else {
+                console.log('User segmentation representation already exists.');
+              }
+
+              const segmentIndices = Object.keys(userSegmentation.segments);
+              for (const segmentIndex of segmentIndices) {
+                segmentationService.setSegmentVisibility(
+                  activeViewportId,
+                  segmentationId,
+                  parseInt(segmentIndex),
+                  true
+                );
+                segmentationService.setSegmentColor(
+                  activeViewportId,
+                  segmentationId,
+                  parseInt(segmentIndex),
+                  [255, 0, 0, 255]
+                );
+              }
+              console.log(`Ensured user segmentation ${segmentationId} is RED and VISIBLE`);
+            }
+          } catch (error) {
+            console.error('Error revealing reference segmentation:', error);
+            uiNotificationService.show({
+              title: 'Display Error',
+              message: 'Failed to display reference contour.',
+              type: 'error',
+              duration: 5000,
+            });
+          }
+        } else {
+          console.warn('No reference data received from server.');
+        }
+
+        // Trigger a custom event to notify the UI to show the score panel
+        window.dispatchEvent(new CustomEvent('ohif:diceScoreUpdated', { detail: { diceScore } }));
+
+        uiNotificationService.show({
+          title: 'Grading Result',
+          message: `Dice Score: ${diceScore.toFixed(4)}`,
+          type: 'success',
+          duration: 5000,
+        });
+      } catch (error) {
+        console.error('Error submitting contour for grading:', error);
+
+        uiNotificationService.show({
+          title: 'Submission Error',
+          message: `Failed to submit contour: ${error.message}`,
+          type: 'error',
+          duration: 5000,
+        });
+      }
+    },
   };
 
   const definitions = {
@@ -789,6 +1115,8 @@ const commandsModule = ({
     scrollActiveThumbnailIntoView: actions.scrollActiveThumbnailIntoView,
     addDisplaySetAsLayer: actions.addDisplaySetAsLayer,
     removeDisplaySetLayer: actions.removeDisplaySetLayer,
+    submitContourForGrading: actions.submitContourForGrading,
+    setReferenceSegmentationId: actions.setReferenceSegmentationId,
   };
 
   return {

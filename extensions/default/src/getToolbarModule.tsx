@@ -1,6 +1,7 @@
 import { utils } from '@ohif/ui-next';
 
 import ToolbarLayoutSelectorWithServices from './Toolbar/ToolbarLayoutSelector';
+import SubmitGradingButton from './Components/SubmitGradingButton';
 
 // legacy
 import { ProgressDropdownWithService } from './Components/ProgressDropdownWithService';
@@ -35,6 +36,10 @@ export default function getToolbarModule({ commandsManager, servicesManager }: w
     {
       name: 'ohif.toolBoxButton',
       defaultComponent: ToolBoxButtonWrapper,
+    },
+    {
+      name: 'ohif.SubmitGradingButton',
+      defaultComponent: SubmitGradingButton,
     },
     // others
     {

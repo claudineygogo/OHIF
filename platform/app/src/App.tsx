@@ -89,6 +89,11 @@ function App({
   serviceProvidersManager = init.serviceProvidersManager;
   hotkeysManager = init.hotkeysManager;
 
+  // DEBUGGING: Expose services for console testing
+  window.ohif = window.ohif || {};
+  window.ohif.servicesManager = servicesManager;
+  window.ohif.extensionManager = extensionManager;
+
   // Set appConfig
   const appConfigState = init.appConfig;
   const { routerBasename, modes, dataSources, oidc, showStudyList } = appConfigState;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { WrappedPanelStudyBrowser } from './Panels';
+import ScorePanelWrapper from './Components/ScorePanelWrapper';
 import i18n from 'i18next';
 
 // TODO:
@@ -22,6 +23,13 @@ function getPanelModule({ commandsManager, extensionManager, servicesManager }) 
           servicesManager={servicesManager}
         />
       ),
+    },
+    {
+      name: 'scorePanel',
+      iconName: 'tab-linear',
+      iconLabel: 'Score',
+      label: 'Dice Score',
+      component: ScorePanelWrapper,
     },
   ];
 }

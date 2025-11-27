@@ -65,7 +65,6 @@ function modeFactory({ modeConfiguration }) {
         segmentationService,
         viewportGridService,
         panelService,
-        displaySetService,
       } = servicesManager.services;
 
       measurementService.clearMeasurements();
@@ -84,7 +83,6 @@ function modeFactory({ modeConfiguration }) {
         'Layout',
         'Crosshairs',
         'MoreTools',
-        'SubmitContour',
       ]);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
@@ -175,99 +173,6 @@ function modeFactory({ modeConfiguration }) {
       });
 
       _unsubscriptions.push(...unsubscribeAutoTabSwitchEvents);
-
-      // Track if we've already loaded the reference segmentation
-      let referenceSegmentationLoaded = false;
-      let isReferenceSegmentationLoading = false;
-
-      // Automatically load reference segmentation, hide it, and create user layer
-      const loadReferenceSegmentation = async () => {
-        if (referenceSegmentationLoaded || isReferenceSegmentationLoading) {
-          return; // Already loaded or currently loading, skip
-        }
-
-        const displaySets = displaySetService.getActiveDisplaySets();
-        const segDisplaySet = displaySets.find(
-          ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Segmentation'
-        );
-
-        if (segDisplaySet) {
-          console.log('✅ Found reference SEG DisplaySet:', segDisplaySet);
-          isReferenceSegmentationLoading = true;
-
-          try {
-            // Load the SEG DisplaySet first (if not already loaded)
-            console.log('📥 Loading SEG DisplaySet...');
-            if (segDisplaySet.load) {
-              await segDisplaySet.load({ headers: {} });
-            }
-            console.log('✅ SEG DisplaySet ready');
-
-            // Create the segmentation
-            const segmentationId =
-              await segmentationService.createSegmentationForSEGDisplaySet(segDisplaySet);
-            console.log('✅ Reference segmentation created:', segmentationId);
-
-            // Store the ID for later use (e.g. revealing after submission)
-            commandsManager.run('setReferenceSegmentationId', { segmentationId });
-
-            // Add the segmentation as a representation to the active viewport
-            const activeViewportId = viewportGridService.getActiveViewportId();
-            if (activeViewportId) {
-              // Add it first to ensure it exists in the viewport
-              await segmentationService.addSegmentationRepresentation(activeViewportId, {
-                segmentationId,
-              });
-              console.log('✅ Reference segmentation added to viewport:', activeViewportId);
-
-              // HIDE IT IMMEDIATELY - Iterate over segments
-              const segmentation = segmentationService.getSegmentation(segmentationId);
-              if (segmentation && segmentation.segments) {
-                const segmentIndices = Object.keys(segmentation.segments);
-                for (const segmentIndex of segmentIndices) {
-                  segmentationService.setSegmentVisibility(
-                    activeViewportId,
-                    segmentationId,
-                    parseInt(segmentIndex),
-                    false
-                  );
-                }
-                console.log('🙈 Reference segmentation segments hidden');
-              } else {
-                console.warn('⚠️ Could not find segments to hide individually');
-              }
-
-              // Create a NEW segmentation for the user to draw on using the correct command
-              const newSegmentationId = await commandsManager.run('createLabelmapForViewport', {
-                viewportId: activeViewportId,
-              });
-              console.log('✨ Created new user segmentation layer:', newSegmentationId);
-            } else {
-              console.warn('⚠️ No active viewport found');
-            }
-
-            // Mark as loaded to prevent duplicate attempts
-            referenceSegmentationLoaded = true;
-
-            console.log('✅ Reference segmentation loaded, hidden, and user layer created');
-          } catch (error) {
-            console.error('❌ Error loading reference segmentation:', error);
-            // Reset loading flag on error so we can try again if needed
-            isReferenceSegmentationLoading = false;
-          }
-        }
-      };
-
-      // Subscribe to DISPLAY_SETS_ADDED to handle async loading
-      const unsubscribeDisplaySetsAdded = displaySetService.subscribe(
-        displaySetService.EVENTS.DISPLAY_SETS_ADDED,
-        loadReferenceSegmentation
-      );
-
-      // Also try to load immediately in case display sets are already available
-      loadReferenceSegmentation();
-
-      _unsubscriptions.push(unsubscribeDisplaySetsAdded);
     },
     onModeExit: ({ servicesManager }: withAppTypes) => {
       const {
@@ -336,7 +241,6 @@ function modeFactory({ modeConfiguration }) {
               rightPanels: [
                 cornerstone.labelMapSegmentationPanel,
                 cornerstone.contourSegmentationPanel,
-                '@ohif/extension-default.panelModule.scorePanel',
               ],
               rightPanelResizable: true,
               // leftPanelClosed: true,
