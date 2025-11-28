@@ -242,6 +242,36 @@ function modeFactory({ modeConfiguration }) {
                 viewportId: activeViewportId,
               });
               console.log('✨ Created new user segmentation layer:', newSegmentationId);
+
+              // Customize the new segmentation
+              if (newSegmentationId) {
+                // 1. Rename Segmentation
+                const segmentation = segmentationService.getSegmentation(newSegmentationId);
+                if (segmentation) {
+                  segmentation.label = 'User Segmentation';
+                  // Force update if necessary, though direct property set might be enough depending on implementation
+                  // segmentationService.updateSegmentation(newSegmentationId, { label: 'User Segmentation' });
+                }
+
+                // 2. Rename Segment 1 to 'Structure 1' and set Color to #F20505
+                // Note: Newly created labelmap usually has segment index 1 active
+                const segmentIndex = 1;
+
+                // Update label
+                segmentationService.setSegmentLabel(newSegmentationId, segmentIndex, 'Structure 1');
+
+                // Update color (#F20505 is [242, 5, 5, 255])
+                segmentationService.setSegmentColor(
+                  activeViewportId,
+                  newSegmentationId,
+                  segmentIndex,
+                  [242, 5, 5, 255]
+                );
+
+                console.log(
+                  '🎨 Customized user segmentation: Name=User Segmentation, Segment=Structure 1, Color=#F20505'
+                );
+              }
             } else {
               console.warn('⚠️ No active viewport found');
             }

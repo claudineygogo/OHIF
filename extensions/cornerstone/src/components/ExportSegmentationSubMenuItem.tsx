@@ -22,6 +22,7 @@ interface ExportSegmentationSubMenuItemProps {
     onSegmentationDownloadRTSS: (segmentationId: string) => void;
     onSegmentationDownload: (segmentationId: string) => void;
     downloadCSVSegmentationReport: (segmentationId: string) => void;
+    onSegmentationExportJSON: (segmentationId: string) => void;
   };
 }
 
@@ -73,6 +74,15 @@ export const ExportSegmentationSubMenuItem: React.FC<ExportSegmentationSubMenuIt
                 disabled={!allowExport}
               >
                 {t('DICOM RTSS')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={e => {
+                  e.preventDefault();
+                  actions.onSegmentationExportJSON(segmentationId);
+                }}
+                disabled={!allowExport}
+              >
+                {t('JSON')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="flex items-center pl-0">

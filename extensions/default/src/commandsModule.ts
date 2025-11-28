@@ -770,6 +770,114 @@ const commandsModule = ({
       console.log('Reference Segmentation ID stored:', storedReferenceSegmentationId);
     },
 
+    exportSegmentationAsJson: async ({ segmentationId }) => {
+      const { segmentationService } = servicesManager.services;
+
+      console.log('Exporting segmentation:', segmentationId);
+
+      // Get the cornerstone segmentation to check if it's stack or volume based
+      const csSegmentation = segmentationService.getSegmentation(segmentationId);
+      const labelmapData = csSegmentation?.representationData?.Labelmap;
+
+      if (!labelmapData) {
+        uiNotificationService.show({
+          title: 'Export JSON',
+          message: 'Segmentation is not a labelmap.',
+          type: 'error',
+          duration: 3000,
+        });
+        return;
+      }
+
+      // Check if we need to convert from stack to volume
+      if (labelmapData.imageIds && !labelmapData.volumeId) {
+        console.log('Stack-based labelmap detected, converting to volume for export...');
+        uiNotificationService.show({
+          title: 'Export JSON',
+          message: 'Converting segmentation for export...',
+          type: 'info',
+          duration: 3000,
+        });
+
+        try {
+          // Import the conversion helper from cornerstone tools
+          const { segmentation: cstSegmentation } = await import('@cornerstonejs/tools');
+          await cstSegmentation.helpers.convertStackToVolumeLabelmap(csSegmentation);
+          console.log('Conversion complete');
+        } catch (error) {
+          console.error('Error converting segmentation:', error);
+          uiNotificationService.show({
+            title: 'Export JSON',
+            message: 'Failed to convert segmentation.',
+            type: 'error',
+            duration: 3000,
+          });
+          return;
+        }
+      }
+
+      const labelmapVolume = segmentationService.getLabelmapVolume(segmentationId);
+
+      if (!labelmapVolume) {
+        console.error('Could not retrieve labelmap volume for ID:', segmentationId);
+        uiNotificationService.show({
+          title: 'Export JSON',
+          message: 'Could not retrieve segmentation data.',
+          type: 'error',
+          duration: 3000,
+        });
+        return;
+      }
+
+      // Extract scalar data
+      let scalarData;
+      if (labelmapVolume.voxelManager) {
+        scalarData = labelmapVolume.voxelManager.getCompleteScalarDataArray();
+      } else {
+        scalarData = labelmapVolume.scalarData;
+      }
+
+      if (!scalarData || scalarData.length === 0) {
+        uiNotificationService.show({
+          title: 'Export JSON',
+          message: 'Segmentation data is empty.',
+          type: 'warning',
+          duration: 3000,
+        });
+        return;
+      }
+
+      // Compress data: Extract indices of non-zero voxels
+      const nonZeroIndices = [];
+      for (let i = 0; i < scalarData.length; i++) {
+        if (scalarData[i] !== 0) {
+          nonZeroIndices.push(i);
+        }
+      }
+
+      const exportData = {
+        non_zero_indices: nonZeroIndices,
+      };
+
+      const jsonString = JSON.stringify(exportData);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'reference_mask_normalized.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      uiNotificationService.show({
+        title: 'Export JSON',
+        message: 'Segmentation exported successfully.',
+        type: 'success',
+        duration: 3000,
+      });
+    },
+
     submitContourForGrading: async () => {
       const { viewportGridService, segmentationService } = servicesManager.services;
 
@@ -1117,6 +1225,7 @@ const commandsModule = ({
     removeDisplaySetLayer: actions.removeDisplaySetLayer,
     submitContourForGrading: actions.submitContourForGrading,
     setReferenceSegmentationId: actions.setReferenceSegmentationId,
+    exportSegmentationAsJson: actions.exportSegmentationAsJson,
   };
 
   return {
