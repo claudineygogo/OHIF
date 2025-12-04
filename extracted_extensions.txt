@@ -1,0 +1,44 @@
+extensions: [
+  {
+    packageName: '@ohif/extension-default',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone',
+  },
+  {
+    packageName: '@ohif/extension-measurement-tracking',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone-dicom-sr',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone-dicom-seg',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone-dicom-pmap',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone-dynamic-volume',
+  },
+  {
+    packageName: '@ohif/extension-dicom-microscopy',
+  },
+  {
+    packageName: '@ohif/extension-dicom-pdf',
+  },
+  {
+    packageName: '@ohif/extension-dicom-video',
+  },
+  {
+    packageName: '@ohif/extension-tmtv',
+  },
+  {
+    packageName: '@ohif/extension-test',
+  },
+  {
+    packageName: '@ohif/extension-cornerstone-dicom-rt',
+  },
+  {
+    packageName: '@ohif/extension-ultrasound-pleura-bline',
+  },
+]
