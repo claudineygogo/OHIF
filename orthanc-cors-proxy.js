@@ -13,7 +13,8 @@ const server = http.createServer((clientReq, clientRes) => {
     clientRes.writeHead(200, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Allow-Headers':
+        'Content-Type, Authorization, X-Requested-With, Accept, Range, Accept-Encoding',
       'Access-Control-Max-Age': '86400',
     });
     clientRes.end();
@@ -35,7 +36,8 @@ const server = http.createServer((clientReq, clientRes) => {
       ...proxyRes.headers,
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Allow-Headers':
+        'Content-Type, Authorization, X-Requested-With, Accept, Range, Accept-Encoding',
       'Access-Control-Expose-Headers': 'Content-Type, Content-Length',
     };
 

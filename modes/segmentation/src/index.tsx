@@ -187,8 +187,27 @@ function modeFactory({ modeConfiguration }) {
         }
 
         const displaySets = displaySetService.getActiveDisplaySets();
+
+        // DEBUG: Log ALL display sets to understand what Orthanc is providing
+        console.log('🔍 [AUTO-LOAD] All active display sets:', displaySets);
+        console.log('🔍 [AUTO-LOAD] Number of display sets:', displaySets.length);
+
+        // DEBUG: Log all SEG display sets and their metadata
+        const segDisplaySets = displaySets.filter(ds => ds.Modality === 'SEG');
+        console.log('🔍 [AUTO-LOAD] SEG display sets found:', segDisplaySets.length);
+        segDisplaySets.forEach((ds, index) => {
+          console.log(`🔍 [AUTO-LOAD] SEG #${index + 1}:`, {
+            SeriesDescription: ds.SeriesDescription,
+            SeriesNumber: ds.SeriesNumber,
+            displaySetInstanceUID: ds.displaySetInstanceUID,
+            Modality: ds.Modality,
+            fullDisplaySet: ds,
+          });
+        });
+
+        // Look for reference segmentation - now looking for 'Reference Segmentation'
         const segDisplaySet = displaySets.find(
-          ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Segmentation'
+          ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Reference Segmentation'
         );
 
         if (segDisplaySet) {
@@ -284,6 +303,32 @@ function modeFactory({ modeConfiguration }) {
             console.error('❌ Error loading reference segmentation:', error);
             // Reset loading flag on error so we can try again if needed
             isReferenceSegmentationLoading = false;
+          }
+        } else {
+          // DEBUG: No exact match found, log a warning
+          console.warn(
+            '⚠️ [AUTO-LOAD] No SEG with SeriesDescription="Reference Segmentation" found'
+          );
+
+          // Try fallback to old name 'Segmentation' for backward compatibility
+          const fallbackSegDisplaySet = displaySets.find(
+            ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Segmentation'
+          );
+
+          if (fallbackSegDisplaySet) {
+            console.warn(
+              '⚠️ [AUTO-LOAD] Found SEG with old name "Segmentation" - consider renaming to "Reference Segmentation"'
+            );
+            console.log(
+              'ℹ️ [AUTO-LOAD] You can manually rename this in your DICOM data to "Reference Segmentation"'
+            );
+          } else if (segDisplaySets.length > 0) {
+            console.warn(
+              '⚠️ [AUTO-LOAD] SEG files exist but none match expected names. Available names:',
+              segDisplaySets.map(ds => ds.SeriesDescription)
+            );
+          } else {
+            console.log('ℹ️ [AUTO-LOAD] No SEG display sets found in study - skipping auto-load');
           }
         }
       };
