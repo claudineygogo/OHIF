@@ -78,6 +78,9 @@
       "packageName": "@ohif/mode-segmentation"
     },
     {
+      "packageName": "@ohif/mode-seg-scorer"
+    },
+    {
       "packageName": "@ohif/mode-tmtv"
     },
     {

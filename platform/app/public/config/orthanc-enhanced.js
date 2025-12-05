@@ -60,6 +60,7 @@ window.config = {
     '@ohif/mode-longitudinal',
     '@ohif/mode-basic',
     '@ohif/mode-segmentation',
+    '@ohif/mode-seg-scorer',
     '@ohif/mode-tmtv',
     '@ohif/mode-microscopy',
     '@ohif/mode-preclinical-4d',
