@@ -1050,7 +1050,7 @@ const commandsModule = ({
           reference_mask_data: 'placeholder_for_backend_lookup',
         };
 
-        const response = await fetch('http://localhost:5000/grade_submission', {
+        const response = await fetch('http://localhost:5001/grade_submission', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
