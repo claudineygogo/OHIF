@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick SCORM Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .status {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            margin: 10px 0;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #007bff; }
+        #log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-line {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Quick SCORM Test</h1>
+    
+    <div class="panel">
+        <h2>Step-by-Step Instructions:</h2>
+        <ol>
+            <li><strong>Click "Run Simple Test"</strong> below</li>
+            <li>Watch the log output</li>
+            <li>Check the SCORM Status panel</li>
+        </ol>
+        
+        <button onclick="runSimpleTest()" style="font-size: 18px; padding: 15px 30px;">
+            ▶️ Run Simple Test
+        </button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="panel">
+        <h2>SCORM Status:</h2>
+        <div class="status">
+            <div>Initialized: <span id="init-status" class="error">NO</span></div>
+            <div>Score: <span id="score-status">--</span></div>
+            <div>Lesson Status: <span id="lesson-status">--</span></div>
+            <div>API Calls: <span id="api-calls">0</span></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Test Log:</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // Mock SCORM API
+        const scormData = {
+            'cmi.core.score.raw': '',
+            'cmi.core.score.min': '',
+            'cmi.core.score.max': '',
+            'cmi.core.lesson_status': 'not attempted'
+        };
+        
+        let apiCalls = 0;
+        let isInitialized = false;
+
+        window.API = {
+            LMSInitialize: function() {
+                isInitialized = true;
+                apiCalls++;
+                logMessage('✓ LMSInitialize called', 'success');
+                updateStatus();
+                return 'true';
+            },
+            LMSSetValue: function(key, value) {
+                scormData[key] = value;
+                apiCalls++;
+                logMessage(`✓ LMSSetValue: ${key} = ${value}`, 'success');
+                updateStatus();
+                return 'true';
+            },
+            LMSGetValue: function(key) {
+                apiCalls++;
+                return scormData[key] || '';
+            },
+            LMSCommit: function() {
+                apiCalls++;
+                logMessage('✓ LMSCommit called', 'info');
+                return 'true';
+            },
+            LMSFinish: function() {
+                isInitialized = false;
+                apiCalls++;
+                logMessage('✓ LMSFinish called', 'info');
+                updateStatus();
+                return 'true';
+            },
+            LMSGetLastError: () => '0',
+            LMSGetErrorString: () => 'No error',
+            LMSGetDiagnostic: () => 'No error'
+        };
+
+        function logMessage(msg, type = 'info') {
+            const log = document.getElementById('log');
+            const line = document.createElement('div');
+            line.className = 'log-line ' + type;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] ${msg}`;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            logMessage('Log cleared', 'info');
+        }
+
+        function updateStatus() {
+            document.getElementById('init-status').textContent = isInitialized ? 'YES' : 'NO';
+            document.getElementById('init-status').className = isInitialized ? 'success' : 'error';
+            document.getElementById('score-status').textContent = scormData['cmi.core.score.raw'] || '--';
+            document.getElementById('lesson-status').textContent = scormData['cmi.core.lesson_status'] || '--';
+            document.getElementById('api-calls').textContent = apiCalls;
+        }
+
+        function runSimpleTest() {
+            logMessage('========================================', 'info');
+            logMessage('🚀 Starting Simple SCORM Test', 'info');
+            logMessage('========================================', 'info');
+            
+            // Step 1: Check if SCORM handler exists
+            logMessage('Step 1: Loading SCORM handler script...', 'info');
+            
+            // Load the scorm-handler.js
+            const script = document.createElement('script');
+            script.src = 'scorm-template/js/scorm-handler.js';
+            script.onload = function() {
+                logMessage('✓ SCORM handler loaded', 'success');
+                
+                // Step 2: Check if SCORM object exists
+                if (window.SCORM) {
+                    logMessage('✓ SCORM object found', 'success');
+                    
+                    // Step 3: Initialize SCORM
+                    logMessage('Step 2: Initializing SCORM...', 'info');
+                    const initResult = window.SCORM.initialize();
+                    
+                    if (initResult) {
+                        logMessage('✓ SCORM initialized successfully!', 'success');
+                        
+                        // Step 4: Test setScore with 85%
+                        logMessage('Step 3: Setting score to 85%...', 'info');
+                        window.SCORM.setScore(85);
+                        
+                        // Step 5: Verify results
+                        setTimeout(() => {
+                            logMessage('Step 4: Verifying results...', 'info');
+                            
+                            if (scormData['cmi.core.score.raw'] === '85') {
+                                logMessage('✓ Score correctly set to 85', 'success');
+                            } else {
+                                logMessage('✗ Score NOT set correctly', 'error');
+                            }
+                            
+                            if (scormData['cmi.core.lesson_status'] === 'passed') {
+                                logMessage('✓ Lesson status correctly set to PASSED', 'success');
+                            } else {
+                                logMessage('✗ Lesson status NOT correct: ' + scormData['cmi.core.lesson_status'], 'error');
+                            }
+                            
+                            logMessage('========================================', 'info');
+                            logMessage('✅ TEST COMPLETE!', 'success');
+                            logMessage('========================================', 'info');
+                            
+                            if (scormData['cmi.core.score.raw'] === '85' && 
+                                scormData['cmi.core.lesson_status'] === 'passed') {
+                                logMessage('🎉 ALL CHECKS PASSED! SCORM implementation is working correctly!', 'success');
+                            } else {
+                                logMessage('⚠️ Some checks failed. Review the log above.', 'error');
+                            }
+                        }, 100);
+                        
+                    } else {
+                        logMessage('✗ SCORM initialization FAILED', 'error');
+                    }
+                } else {
+                    logMessage('✗ SCORM object NOT found!', 'error');
+                    logMessage('This means scorm-handler.js did not load correctly', 'error');
+                }
+            };
+            
+            script.onerror = function() {
+                logMessage('✗ Failed to load scorm-handler.js', 'error');
+                logMessage('Make sure the file exists at: scorm-template/js/scorm-handler.js', 'error');
+            };
+            
+            document.head.appendChild(script);
+        }
+
+        // Auto-log on page load
+        window.addEventListener('load', () => {
+            logMessage('Quick SCORM Test page loaded', 'success');
+            logMessage('Mock SCORM API is ready', 'success');
+            logMessage('Click "Run Simple Test" to begin!', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -41,7 +41,7 @@ where python >nul 2>nul
 if %errorlevel% neq 0 (
     echo WARNING: Python is not installed! Scorer will not start.
 ) else (
-    start "Python Scorer" cmd /k "cd /d C:\Users\Claudiney\OHIF-Contest-Project\Scorer && python app.py"
+    start "Python Scorer" cmd /k "cd /d %~dp0Scorer && python app.py"
 )
 
 echo [5/5] Starting Scorer CORS Proxy (Port 5001)...

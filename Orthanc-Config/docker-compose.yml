@@ -1,0 +1,26 @@
+services:
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - ./orthanc.json:/etc/orthanc/orthanc.json:ro
+    restart: unless-stopped
+    networks:
+      - medical-server-network
+
+  ohif:
+    build: .
+    ports:
+      - "3000:80"
+    depends_on:
+      - orthanc
+    restart: unless-stopped
+    networks:
+      - medical-server-network
+
+networks:
+  medical-server-network:
+    driver: bridge
+

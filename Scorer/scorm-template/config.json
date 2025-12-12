@@ -1,0 +1,28 @@
+{
+    "titles": {
+        "instruction": "Segmentation Exercise",
+        "results": "Exercise Complete"
+    },
+    "text": {
+        "welcome": "Welcome to Sinapsos's Segmentation Exercise.",
+        "description": "Please contour the specificified anatomical structure on the provided CT scan.",
+        "instructions_header": "Instructions:",
+        "instructions_list": [
+            "Use the segmentation tools to draw your contour",
+            "Click \"Submit\" when you are finished",
+            "Your score will be calculated automatically"
+        ],
+        "score_label": "Your Final Score:"
+    },
+    "buttons": {
+        "start": "Start Exercise",
+        "try_again": "Try Again"
+    },
+    "settings": {
+        "passing_score": 70
+    },
+    "messages": {
+        "success": "Congratulations! You have passed the exercise.",
+        "failure": "You did not meet the passing threshold. Please try again."
+    }
+}

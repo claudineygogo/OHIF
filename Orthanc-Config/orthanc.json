@@ -1,0 +1,23 @@
+{
+  "AuthenticationEnabled": false,
+  "RemoteAccessAllowed": true,
+  "CorsEnabled": true,
+  "CorsAllowedOrigins": [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "*"
+  ],
+  "Plugins": [
+    "/usr/local/share/orthanc/plugins/libOrthancDicomWeb.so"
+  ],
+  "DicomWeb": {
+    "Enable": true,
+    "Root": "/dicom-web/"
+  },
+  "HttpHeaders": {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "false"
+  }
+}

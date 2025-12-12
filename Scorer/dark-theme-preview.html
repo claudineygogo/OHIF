@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Theme Preview</title>
+    <link rel="stylesheet" href="scorm-template/css/styles.css">
+    <style>
+        /* Preview Helper Styles */
+        body {
+            /* Override body to allow scrolling for preview */
+            overflow: auto;
+            height: auto;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            background-color: #050510; /* Slightly darker than theme body for contrast */
+        }
+        .screen {
+            position: relative;
+            height: 400px; /* Fixed height for preview boxes */
+            display: flex !important; /* Force display for preview */
+            border: 1px solid #444;
+            margin-bottom: 40px;
+        }
+        .preview-label {
+            color: #888;
+            font-family: monospace;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="preview-label">1. Instructions Screen</div>
+    <div id="instructions-screen" class="screen">
+      <div class="instructions-content">
+        <h1>Segmentation Exercise</h1>
+        <p>Welcome to the OHIF++ Segmentation Exercise.</p>
+        <p>
+          You will be asked to contour a specific anatomical structure on the
+          provided CT scan.
+        </p>
+        <p>Instructions:</p>
+        <ul>
+          <li>Use the segmentation tools to draw your contour</li>
+          <li>Click "Submit" when you are finished</li>
+          <li>Your score will be calculated automatically</li>
+        </ul>
+        <button class="primary-button">Start Exercise</button>
+      </div>
+    </div>
+
+    <div class="preview-label">2. Viewer Screen (Simulated)</div>
+    <div id="viewer-screen" class="screen">
+       <div style="color: #666;">[OHIF Viewer Iframe Would Be Here - On Black Background]</div>
+    </div>
+
+    <div class="preview-label">3. Results Screen (Success)</div>
+    <div id="results-screen" class="screen">
+      <div class="results-content">
+        <h1>Exercise Complete</h1>
+        <p id="score-display">
+          Your Dice Score: <span id="score-value" style="color:#4ade80">95%</span>
+        </p>
+        <p id="feedback-message" class="success">Congratulations! You have passed the exercise.</p>
+        <button class="primary-button">Try Again</button>
+      </div>
+    </div>
+
+</body>
+</html>
+<!-- 
+    VERIFICATION ASSERTION:
+    - Text colors are light (#e2e8f0, #ffffff) against dark backgrounds (#1a1d3a).
+    - Main background is Deep Navy (#090c29).
+    - Buttons are OHIF Blue (#3f51b5) with hover effects.
+    - Success/Fail messages utilize bright green/red for high contrast.
+-->

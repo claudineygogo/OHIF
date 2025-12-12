@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCORM Test Harness</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { display: flex; gap: 20px; }
+        .lms-panel { width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .content-panel { flex-grow: 1; background: white; padding: 5px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        iframe { width: 100%; height: 600px; border: none; }
+        .log { background: #333; color: #0f0; padding: 10px; font-family: monospace; height: 300px; overflow-y: auto; margin-top: 20px; border-radius: 4px;}
+        .controls { margin-top: 10px; padding: 10px; background: #eee; }
+        button { padding: 8px 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        h2 { margin-top: 0; }
+        .status-item { margin-bottom: 5px; font-size: 14px; }
+        .status-label { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>SCORM 1.2 Test Harness</h1>
+    
+    <div class="container">
+        <!-- Mock LMS Panel -->
+        <div class="lms-panel">
+            <h2>LMS State</h2>
+            <div class="status-item"><span class="status-label">Initialized:</span> <span id="lms-init">false</span></div>
+            <div class="status-item"><span class="status-label">Status:</span> <span id="lms-status">not attempted</span></div>
+            <div class="status-item"><span class="status-label">Score (Raw):</span> <span id="lms-score">--</span></div>
+            <div class="status-item"><span class="status-label">Score (Min):</span> <span id="lms-min">--</span></div>
+            <div class="status-item"><span class="status-label">Score (Max):</span> <span id="lms-max">--</span></div>
+            <hr>
+            <h3>Test Controls</h3>
+            <div class="controls">
+                <p>Simulate OHIF Message:</p>
+                <button onclick="simulateScore(85)">Send 85% (Pass)</button>
+                <br><br>
+                <button onclick="simulateScore(40)" style="background: #e74c3c;">Send 40% (Fail)</button>
+            </div>
+        </div>
+
+        <!-- Content Panel (The SCORM Package) -->
+        <div class="content-panel">
+            <iframe id="scorm-content" src="test-wrapper.html"></iframe>
+        </div>
+    </div>
+
+    <div class="log" id="debug-log"></div>
+
+    <script>
+        // === MOCK SCORM API ===
+        const LMS_DATA = {
+            "cmi.core.lesson_status": "not attempted",
+            "cmi.core.score.raw": "",
+            "cmi.core.score.min": "",
+            "cmi.core.score.max": "",
+            "cmi.suspend_data": ""
+        };
+
+        window.API = {
+            LMSInitialize: function(param) {
+                log("LMS: LMSInitialize called");
+                updateDisplay("lms-init", "true");
+                return "true";
+            },
+            LMSFinish: function(param) {
+                log("LMS: LMSFinish called");
+                updateDisplay("lms-init", "false (finished)");
+                return "true";
+            },
+            LMSGetValue: function(element) {
+                log(`LMS: LMSGetValue('${element}')`);
+                return LMS_DATA[element] || "";
+            },
+            LMSSetValue: function(element, value) {
+                log(`LMS: LMSSetValue('${element}', '${value}')`);
+                LMS_DATA[element] = value;
+                
+                // Update specific UI elements if relevant
+                if (element === "cmi.core.lesson_status") updateDisplay("lms-status", value);
+                if (element === "cmi.core.score.raw") updateDisplay("lms-score", value);
+                if (element === "cmi.core.score.min") updateDisplay("lms-min", value);
+                if (element === "cmi.core.score.max") updateDisplay("lms-max", value);
+                
+                return "true";
+            },
+            LMSCommit: function(param) {
+                log("LMS: LMSCommit called (Data Saved)");
+                return "true";
+            },
+            LMSGetLastError: function() { return "0"; },
+            LMSGetErrorString: function(code) { return "No error"; },
+            LMSGetDiagnostic: function(code) { return "No error"; }
+        };
+
+        // === LOGGING UTILITIES ===
+        function log(msg) {
+            const div = document.getElementById("debug-log");
+            const entry = document.createElement("div");
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            div.appendChild(entry);
+            div.scrollTop = div.scrollHeight;
+            console.log(msg);
+        }
+
+        function updateDisplay(id, value) {
+            const el = document.getElementById(id);
+            if(el) el.textContent = value;
+        }
+
+        // === TEST SIMULATION ===
+        function simulateScore(score) {
+            const iframe = document.getElementById("scorm-content");
+            const win = iframe.contentWindow;
+            
+            log(`TEST: Sending SCORE_SUBMITTED with ${score}% to iframe...`);
+            
+            // Post message to the wrapper
+            win.postMessage({
+                type: 'SCORE_SUBMITTED',
+                score: score,
+                details: { dice: score / 100 }
+            }, '*');
+        }
+
+        // Auto-start helper
+        window.addEventListener('load', () => {
+            log("TEST: Harness loaded. SCORM API exposed.");
+            setTimeout(() => {
+                const iframe = document.getElementById("scorm-content");
+                // Attempt to "click" start in the iframe after a short delay
+                // Note: Cross-origin restrictions might apply if not on same domain/file protocol
+                // but for local file testing, usually distinct files are same origin.
+                try {
+                     // We can't easily click inside iframe from here if strict sandbox, 
+                     // but purely file-to-file usually works.
+                     // Instead, we rely on manual click or just sending the message (since handler is bound)
+                     // But the prompt asked us to simulate "Start Assessment" click.
+                     // Let's try to find the button
+                     const btn = iframe.contentDocument.getElementById("start-button");
+                     if(btn) {
+                         log("TEST: Auto-clicking Start button...");
+                         btn.click();
+                     } else {
+                         log("TEST: Could not auto-click start (iframe not ready or accessible). Click manually.");
+                     }
+                } catch(e) {
+                    log("TEST: Cannot access iframe DOM automatically: " + e.message);
+                }
+            }, 1000);
+        });
+
+    </script>
+</body>
+</html>
