@@ -27,7 +27,64 @@ const ScorePanelWrapper: React.FC = () => {
     };
   }, []);
 
-  return <ScorePanel diceScore={diceScore} />;
+  const handleSubmitToLMS = () => {
+    // Invoke the command via the custom event used by commandsModule or simply re-dispatch
+    // Since we don't have direct access to commandsManager here easily without prop drilling,
+    // and we want this to work reliably, we can trigger the command if we had it.
+    // However, the cleanest way without refactoring the whole extension panel registration
+    // is to replicate the postMessage logic here since we have the score.
+
+    if (diceScore !== null) {
+      // Use the same logic as the command
+      const percentageScore = diceScore * 100;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'SCORE_SUBMITTED',
+            score: percentageScore,
+            details: {
+              dice: diceScore,
+              timestamp: new Date().toISOString(),
+            },
+          },
+          '*'
+        );
+        // Optimistic UI update or alert
+        // We can't easily use uiNotificationService here without props.
+        // alert("Score submitted to LMS!"); // Removed blocking popup per user request
+      } else {
+        alert('No LMS parent window detected.');
+      }
+    }
+  };
+
+  return (
+    <div>
+      <ScorePanel diceScore={diceScore} />
+      {diceScore !== null && (
+        <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={handleSubmitToLMS}
+            style={{
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              width: '100%',
+            }}
+            onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0056b3')}
+            onMouseOut={e => (e.currentTarget.style.backgroundColor = '#007bff')}
+          >
+            Submit Score to LMS
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default ScorePanelWrapper;

@@ -134,6 +134,13 @@ export default defineConfig({
   server: {
     port: OHIF_PORT,
     open: OHIF_OPEN,
+    // Enable Cross-Origin Framing/Embedding for SCORM/LMS
+    // Enable Cross-Origin Framing/Embedding for SCORM/LMS
+    // headers: {
+    //   'Access-Control-Allow-Origin': '*',
+    //   'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+    //   'Content-Security-Policy': 'frame-ancestors *;',
+    // },
     // Configure proxy
     proxy: {
       '/dicomweb': {

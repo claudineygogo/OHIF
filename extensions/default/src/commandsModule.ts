@@ -45,6 +45,8 @@ const commandsModule = ({
 }: Types.Extensions.ExtensionParams): Types.Extensions.CommandsModule => {
   // Store the reference segmentation ID globally within the module scope
   let storedReferenceSegmentationId: string | null = null;
+  // Store score data for two-step submission
+  let storedScoreData: { score: number; details: any } | null = null;
 
   const {
     customizationService,
@@ -1178,6 +1180,36 @@ const commandsModule = ({
         // Trigger a custom event to notify the UI to show the score panel
         window.dispatchEvent(new CustomEvent('ohif:diceScoreUpdated', { detail: { diceScore } }));
 
+        // Notify parent window (SCORM Wrapper)
+        // STEP 8 CHANGE: Removed automatic postMessage.
+        // Storing the score locally for manual submission.
+
+        storedScoreData = {
+          score: diceScore * 100, // Percentage
+          details: {
+            dice: diceScore,
+            timestamp: new Date().toISOString(),
+          },
+        };
+
+        console.log('Score stored for manual submission:', storedScoreData);
+
+        // Notify the user they can now submit to LMS
+        uiNotificationService.show({
+          title: 'Grading Successful',
+          message:
+            'Your contour has been graded. Please review the results and click "Submit Score to LMS" when ready.',
+          type: 'success',
+          duration: 8000,
+        });
+
+        /*
+        // Automatic submission removed
+        if (window.parent && window.parent !== window) {
+          ...
+        }
+        */
+
         uiNotificationService.show({
           title: 'Grading Result',
           message: `Dice Score: ${diceScore.toFixed(4)}`,
@@ -1192,6 +1224,45 @@ const commandsModule = ({
           message: `Failed to submit contour: ${error.message}`,
           type: 'error',
           duration: 5000,
+        });
+      }
+    },
+
+    submitScoreToLMS: () => {
+      if (!storedScoreData) {
+        uiNotificationService.show({
+          title: 'Submit Score',
+          message: 'No graded score available. Please submit a contour for grading first.',
+          type: 'warning',
+          duration: 5000,
+        });
+        return;
+      }
+
+      console.log('Submitting score to LMS:', storedScoreData);
+
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'SCORE_SUBMITTED',
+            score: storedScoreData.score,
+            details: storedScoreData.details,
+          },
+          '*'
+        );
+
+        uiNotificationService.show({
+          title: 'Score Submitted',
+          message: 'Your score has been sent to the LMS.',
+          type: 'success',
+          duration: 3000,
+        });
+      } else {
+        uiNotificationService.show({
+          title: 'Submit Score',
+          message: 'No LMS parent window detected (Standalone mode).',
+          type: 'info',
+          duration: 3000,
         });
       }
     },
@@ -1224,6 +1295,7 @@ const commandsModule = ({
     addDisplaySetAsLayer: actions.addDisplaySetAsLayer,
     removeDisplaySetLayer: actions.removeDisplaySetLayer,
     submitContourForGrading: actions.submitContourForGrading,
+    submitScoreToLMS: actions.submitScoreToLMS,
     setReferenceSegmentationId: actions.setReferenceSegmentationId,
     exportSegmentationAsJson: actions.exportSegmentationAsJson,
   };

@@ -85,6 +85,7 @@ function modeFactory({ modeConfiguration }) {
         'Crosshairs',
         'MoreTools',
         'SubmitContour',
+        'SubmitScoreToLMS',
       ]);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [

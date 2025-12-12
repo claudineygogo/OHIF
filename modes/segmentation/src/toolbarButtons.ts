@@ -1204,6 +1204,17 @@ const toolbarButtons: Button[] = [
       evaluate: 'evaluate.action',
     },
   },
+  {
+    id: 'SubmitScoreToLMS',
+    uiType: 'ohif.toolButton',
+    props: {
+      icon: 'icon-status-tracking',
+      label: 'Submit Score to LMS',
+      tooltip: 'Submit your final score to the Learning Management System',
+      commands: 'submitScoreToLMS',
+      evaluate: 'evaluate.action',
+    },
+  },
 ];
 
 export default toolbarButtons;
