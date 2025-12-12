@@ -68,6 +68,27 @@ function modeFactory({ modeConfiguration }) {
         displaySetService,
       } = servicesManager.services;
 
+      // CSS HACK: Hide specific header elements for this mode
+      // This is necessary because the layout configuration doesn't easily support removing these header specific items
+      if (typeof document !== 'undefined') {
+        const styleId = 'seg-scorer-mode-style';
+        if (!document.getElementById(styleId)) {
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.innerHTML = `
+            /* Hide OHIF Logo and Return Button */
+            [data-cy="return-to-work-list"] {
+              display: none !important;
+            }
+            /* Hide Settings Cogwheel (The last item in the right header section) */
+            .absolute.right-0 > .flex-shrink-0:last-child {
+               display: none !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+      }
+
       measurementService.clearMeasurements();
 
       // Init Default and SR ToolGroups
@@ -135,12 +156,8 @@ function modeFactory({ modeConfiguration }) {
       ]);
 
       toolbarService.updateSection('LabelMapTools', [
-        'LabelmapSlicePropagation',
         'BrushTools',
-        'MarkerLabelmap',
-        'RegionSegmentPlus',
-        'Shapes',
-        'LabelMapEditWithContour',
+        // Removed: LabelmapSlicePropagation, MarkerLabelmap, RegionSegmentPlus, Shapes, LabelMapEditWithContour
       ]);
       toolbarService.updateSection('ContourTools', [
         'PlanarFreehandContourSegmentationTool',
@@ -157,8 +174,8 @@ function modeFactory({ modeConfiguration }) {
       ]);
 
       toolbarService.updateSection('LabelMapUtilities', [
-        'InterpolateLabelmap',
-        'SegmentBidirectional',
+        // Moved InterpolateLabelmap to BrushTools
+        // Removed: SegmentBidirectional
       ]);
       toolbarService.updateSection('ContourUtilities', [
         'LogicalContourOperations',
@@ -166,7 +183,8 @@ function modeFactory({ modeConfiguration }) {
         'SmoothContours',
       ]);
 
-      toolbarService.updateSection('BrushTools', ['Brush', 'Eraser', 'Threshold']);
+      // Removed Threshold from BrushTools, added InterpolateLabelmap
+      toolbarService.updateSection('BrushTools', ['Brush', 'Eraser', 'InterpolateLabelmap']);
 
       const { unsubscribeAutoTabSwitchEvents } = setUpAutoTabSwitchHandler({
         segmentationService,
@@ -354,6 +372,15 @@ function modeFactory({ modeConfiguration }) {
         uiModalService,
       } = servicesManager.services;
 
+      // Remove the custom style injected for this mode
+      if (typeof document !== 'undefined') {
+        const styleId = 'seg-scorer-mode-style';
+        const style = document.getElementById(styleId);
+        if (style) {
+          style.remove();
+        }
+      }
+
       _unsubscriptions.forEach(unsubscribe => unsubscribe());
       _unsubscriptions.length = 0;
 
@@ -406,7 +433,8 @@ function modeFactory({ modeConfiguration }) {
           return {
             id: ohif.layout,
             props: {
-              leftPanels: [ohif.leftPanel],
+              // UPDATED: Removing the Studies Panel
+              leftPanels: [],
               leftPanelResizable: true,
               rightPanels: [
                 cornerstone.labelMapSegmentationPanel,
