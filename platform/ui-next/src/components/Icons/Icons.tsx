@@ -149,6 +149,8 @@ import {
   ToolSculptor,
   ToolLabelmapEditWithContour,
 } from './Sources/Tools';
+import IconTrophy from './Sources/IconTrophy';
+import IconPerformance from './Sources/IconPerformance';
 import ActionNewDialog from './Sources/ActionNewDialog';
 import NotificationInfo from './Sources/NotificationInfo';
 import StatusLocked from './Sources/StatusLocked';
@@ -797,6 +799,9 @@ export const Icons = {
   clipboard: (props: IconProps) => Clipboard(props),
   Undo,
   Redo,
+  Redo,
+  'icon-trophy': (props: IconProps) => IconTrophy(props),
+  'icon-performance': (props: IconProps) => IconPerformance(props),
   JumpToSlice,
 
   /** Adds an icon to the set of icons */

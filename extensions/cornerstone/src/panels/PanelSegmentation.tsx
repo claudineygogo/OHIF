@@ -100,6 +100,10 @@ export default function PanelSegmentation({
     'panelSegmentation.customDropdownMenuContent'
   );
 
+  const showSubmitButton = customizationService.getCustomization(
+    'panelSegmentation.showSubmitButton'
+  );
+
   const CustomSegmentStatisticsHeader = customizationService.getCustomization(
     'panelSegmentation.customSegmentStatisticsHeader'
   );
@@ -319,6 +323,28 @@ export default function PanelSegmentation({
           <SegmentationTable.Config />
           <SegmentationTable.AddSegmentationRow />
           {renderModeContent()}
+          {showSubmitButton?.visible && (
+            <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={() => commandsManager.run('submitContourForGrading')}
+                style={{
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  width: '100%',
+                }}
+                onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0056b3')}
+                onMouseOut={e => (e.currentTarget.style.backgroundColor = '#007bff')}
+              >
+                Submit Segmentation
+              </button>
+            </div>
+          )}
         </SegmentationTable>
       </PopoverAnchor>
       {activeUtilityOptions && (

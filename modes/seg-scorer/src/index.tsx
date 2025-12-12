@@ -66,7 +66,16 @@ function modeFactory({ modeConfiguration }) {
         viewportGridService,
         panelService,
         displaySetService,
+        customizationService,
       } = servicesManager.services;
+
+      // Add customization to show the submit button in the segmentation panel
+      customizationService.setCustomizations({
+        'panelSegmentation.showSubmitButton': {
+          id: 'panelSegmentation.showSubmitButton',
+          visible: true,
+        },
+      });
 
       // CSS HACK: Hide specific header elements for this mode
       // This is necessary because the layout configuration doesn't easily support removing these header specific items
@@ -84,8 +93,47 @@ function modeFactory({ modeConfiguration }) {
             .absolute.right-0 > .flex-shrink-0:last-child {
                display: none !important;
             }
+            /* Hide the 'Label map segmentations' panel header (Accordion Trigger) */
+            /* Using a broad selector for the trigger button inside the panel section */
+            .flex-shrink-0.overflow-hidden button[type="button"][aria-expanded] {
+              display: none !important;
+            }
+            /* Hide the inner headers of the segmentation table (Expanded Header) */
+            .bg-primary-dark.flex.h-10.w-full.items-center.space-x-1 {
+               display: none !important;
+            }
+            /* Hide collapsed content if it appears */
+            .collapsed-content {
+               display: none !important;
+            }
+            /* Hide 'Shape' sub-element label in Tool Settings */
+            .flex.items-center.justify-between.text-\[13px\] {
+               display: none !important;
+            }
+
+            /* --- TAB VISIBILITY LOGIC --- */
+
+            /* Initially (No grading): Hide Score Panel Tab */
+            /* Using precise data-cy for Score Panel */
+            body:not(.grading-complete) div[data-cy="scorePanel-btn"] {
+              display: none !important;
+            }
+
+            /* Grading Complete: Hide Label Map Tab, Show Score Panel Tab */
+            /* Using precise data-cy for Label Map Panel */
+            body.grading-complete div[data-cy="panelSegmentationWithToolsLabelMap-btn"] {
+              display: none !important;
+            }
+            body.grading-complete div[data-cy="scorePanel-btn"] {
+              display: flex !important;
+            }
           `;
           document.head.appendChild(style);
+        }
+
+        // Reset grading state on entry
+        if (typeof document !== 'undefined') {
+          document.body.classList.remove('grading-complete');
         }
       }
 
@@ -105,7 +153,7 @@ function modeFactory({ modeConfiguration }) {
         'Layout',
         'Crosshairs',
         'MoreTools',
-        'SubmitContour',
+        // 'SubmitContour', // Removed from toolbar
       ]);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
@@ -297,17 +345,26 @@ function modeFactory({ modeConfiguration }) {
                 // Update label
                 segmentationService.setSegmentLabel(newSegmentationId, segmentIndex, 'Structure 1');
 
-                // Update color (#F20505 is [242, 5, 5, 255])
+                // Update color (#1E19E2 is [30, 25, 226, 255])
                 segmentationService.setSegmentColor(
                   activeViewportId,
                   newSegmentationId,
                   segmentIndex,
-                  [242, 5, 5, 255]
+                  [30, 25, 226, 255]
                 );
 
                 console.log(
-                  '🎨 Customized user segmentation: Name=User Segmentation, Segment=Structure 1, Color=#F20505'
+                  '🎨 Customized user segmentation: Name=User Segmentation, Segment=Structure 1, Color=#1E19E2'
                 );
+
+                // 3. Activate the Brush tool automatically
+                // Use the tool name 'CircularBrush' which is the actual Cornerstone tool name
+                setTimeout(() => {
+                  commandsManager.run('setToolActive', {
+                    toolName: 'CircularBrush',
+                  });
+                }, 100);
+                console.log('🖌️ Brush tool (CircularBrush) activated automatically');
               }
             } else {
               console.warn('⚠️ No active viewport found');
@@ -438,7 +495,7 @@ function modeFactory({ modeConfiguration }) {
               leftPanelResizable: true,
               rightPanels: [
                 cornerstone.labelMapSegmentationPanel,
-                cornerstone.contourSegmentationPanel,
+                // cornerstone.contourSegmentationPanel,
                 '@ohif/extension-default.panelModule.scorePanel',
               ],
               rightPanelResizable: true,

@@ -79,7 +79,7 @@ const ScorePanel: React.FC<ScorePanelProps> = ({ diceScore }) => {
         }}
       >
         <div style={{ marginBottom: '4px' }}>
-          <span style={{ color: '#ef4444', fontWeight: 'bold' }}>●</span> Your Contour
+          <span style={{ color: '#1E19E2', fontWeight: 'bold' }}>●</span> Your Contour
         </div>
         <div>
           <span style={{ color: '#22c55e', fontWeight: 'bold' }}>●</span> Reference Contour

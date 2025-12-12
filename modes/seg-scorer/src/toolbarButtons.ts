@@ -685,17 +685,6 @@ const toolbarButtons: Button[] = [
             },
           ],
         },
-        {
-          name: 'Shape',
-          type: 'radio',
-          id: 'brush-mode',
-          value: 'CircularBrush',
-          values: [
-            { value: 'CircularBrush', label: 'Circle' },
-            { value: 'SphereBrush', label: 'Sphere' },
-          ],
-          commands: ['setToolActiveToolbar'],
-        },
       ],
     },
   },

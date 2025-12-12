@@ -79,7 +79,7 @@ const ScorePanelWrapper: React.FC = () => {
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0056b3')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = '#007bff')}
           >
-            Submit Score to LMS
+            Submit Score
           </button>
         </div>
       )}

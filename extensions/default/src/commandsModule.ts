@@ -1159,10 +1159,10 @@ const commandsModule = ({
                   activeViewportId,
                   segmentationId,
                   parseInt(segmentIndex),
-                  [255, 0, 0, 255]
+                  [30, 25, 226, 255]
                 );
               }
-              console.log(`Ensured user segmentation ${segmentationId} is RED and VISIBLE`);
+              console.log(`Ensured user segmentation ${segmentationId} is BLUE and VISIBLE`);
             }
           } catch (error) {
             console.error('Error revealing reference segmentation:', error);
@@ -1179,6 +1179,20 @@ const commandsModule = ({
 
         // Trigger a custom event to notify the UI to show the score panel
         window.dispatchEvent(new CustomEvent('ohif:diceScoreUpdated', { detail: { diceScore } }));
+
+        // TOGGLE VISIBILITY: Set grading complete state + Open Score Panel
+        if (typeof document !== 'undefined') {
+          document.body.classList.add('grading-complete');
+        }
+
+        // Attempt to switch to the Score Panel
+        // We use a timeout to ensure the UI has processed the class change/re-render if needed
+        setTimeout(() => {
+          commandsManager.run('activatePanel', {
+            panelId: '@ohif/extension-default.panelModule.scorePanel',
+            forceActive: true,
+          });
+        }, 100);
 
         // Notify parent window (SCORM Wrapper)
         // STEP 8 CHANGE: Removed automatic postMessage.
@@ -1266,6 +1280,14 @@ const commandsModule = ({
         });
       }
     },
+
+    /**
+     * Activates a specific panel.
+     */
+    activatePanel: ({ panelId, forceActive = true }) => {
+      const { panelService } = servicesManager.services;
+      panelService.activatePanel(panelId, forceActive);
+    },
   };
 
   const definitions = {
@@ -1298,6 +1320,7 @@ const commandsModule = ({
     submitScoreToLMS: actions.submitScoreToLMS,
     setReferenceSegmentationId: actions.setReferenceSegmentationId,
     exportSegmentationAsJson: actions.exportSegmentationAsJson,
+    activatePanel: actions.activatePanel,
   };
 
   return {

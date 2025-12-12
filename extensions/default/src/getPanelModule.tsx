@@ -26,7 +26,7 @@ function getPanelModule({ commandsManager, extensionManager, servicesManager }) 
     },
     {
       name: 'scorePanel',
-      iconName: 'tab-linear',
+      iconName: 'icon-performance',
       iconLabel: 'Score',
       label: 'Dice Score',
       component: ScorePanelWrapper,
