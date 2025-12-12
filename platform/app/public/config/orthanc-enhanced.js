@@ -70,6 +70,9 @@ window.config = {
   ],
 
   customizationService: {},
+  investigationalUseDialog: {
+    option: 'never',
+  },
   showStudyList: true,
 
   // Performance settings
