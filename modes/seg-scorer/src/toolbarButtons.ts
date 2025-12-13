@@ -662,12 +662,21 @@ const toolbarButtons: Button[] = [
           segmentationRepresentationType: 'Labelmap',
         },
       ],
-      commands: {
-        commandName: 'activateSelectedSegmentationOfType',
-        commandOptions: {
-          segmentationRepresentationType: 'Labelmap',
+      commands: [
+        {
+          commandName: 'setToolActiveToolbar',
+          commandOptions: {
+            toolGroupIds: ['default', 'mpr', 'SRToolGroup', 'volume3d'],
+            toolName: 'CircularBrush',
+          },
         },
-      },
+        {
+          commandName: 'activateSelectedSegmentationOfType',
+          commandOptions: {
+            segmentationRepresentationType: 'Labelmap',
+          },
+        },
+      ],
       options: [
         {
           name: 'Radius (mm)',
@@ -914,24 +923,22 @@ const toolbarButtons: Button[] = [
             commandOptions: { toolNames: ['CircularEraser', 'SphereEraser'] },
           },
         },
+      ],
+      commands: [
         {
-          name: 'Shape',
-          type: 'radio',
-          id: 'eraser-mode',
-          value: 'CircularEraser',
-          values: [
-            { value: 'CircularEraser', label: 'Circle' },
-            { value: 'SphereEraser', label: 'Sphere' },
-          ],
-          commands: 'setToolActiveToolbar',
+          commandName: 'setToolActiveToolbar',
+          commandOptions: {
+            toolGroupIds: ['default', 'mpr', 'SRToolGroup', 'volume3d'],
+            toolName: 'CircularEraser',
+          },
+        },
+        {
+          commandName: 'activateSelectedSegmentationOfType',
+          commandOptions: {
+            segmentationRepresentationType: 'Labelmap',
+          },
         },
       ],
-      commands: {
-        commandName: 'activateSelectedSegmentationOfType',
-        commandOptions: {
-          segmentationRepresentationType: 'Labelmap',
-        },
-      },
     },
   },
   {
@@ -959,12 +966,21 @@ const toolbarButtons: Button[] = [
           segmentationRepresentationType: 'Labelmap',
         },
       ],
-      commands: {
-        commandName: 'activateSelectedSegmentationOfType',
-        commandOptions: {
-          segmentationRepresentationType: 'Labelmap',
+      commands: [
+        {
+          commandName: 'setToolActiveToolbar',
+          commandOptions: {
+            toolGroupIds: ['default', 'mpr', 'SRToolGroup', 'volume3d'],
+            toolName: 'ThresholdCircularBrush',
+          },
         },
-      },
+        {
+          commandName: 'activateSelectedSegmentationOfType',
+          commandOptions: {
+            segmentationRepresentationType: 'Labelmap',
+          },
+        },
+      ],
       options: [
         {
           name: 'Radius (mm)',
@@ -1085,12 +1101,21 @@ const toolbarButtons: Button[] = [
           segmentationRepresentationType: 'Labelmap',
         },
       ],
-      commands: {
-        commandName: 'activateSelectedSegmentationOfType',
-        commandOptions: {
-          segmentationRepresentationType: 'Labelmap',
+      commands: [
+        {
+          commandName: 'setToolActiveToolbar',
+          commandOptions: {
+            toolGroupIds: ['default', 'mpr', 'SRToolGroup', 'volume3d'],
+            toolName: 'CircleScissor',
+          },
         },
-      },
+        {
+          commandName: 'activateSelectedSegmentationOfType',
+          commandOptions: {
+            segmentationRepresentationType: 'Labelmap',
+          },
+        },
+      ],
       options: [
         {
           name: 'Shape',

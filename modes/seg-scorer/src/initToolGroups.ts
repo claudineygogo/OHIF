@@ -55,6 +55,7 @@ function createTools({ utilityModule, commandsManager }) {
           activeStrategy: 'ERASE_INSIDE_CIRCLE',
           minRadius: MIN_SEGMENTATION_DRAWING_RADIUS,
           maxRadius: MAX_SEGMENTATION_DRAWING_RADIUS,
+          brushSize: 12,
         },
       },
       {
