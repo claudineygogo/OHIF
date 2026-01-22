@@ -51,6 +51,7 @@ const measurementServiceMappingsFactory = (
       Probe: POINT,
       UltrasoundDirectional: POLYLINE,
       SegmentBidirectional: BIDIRECTIONAL,
+      CircularStampContourTool: POLYLINE,
     };
 
     return TOOL_TYPE_TO_VALUE_TYPE[toolType];
@@ -167,6 +168,22 @@ const measurementServiceMappingsFactory = (
       ],
     },
     PlanarFreehandROI: {
+      toAnnotation: PlanarFreehandROI.toAnnotation,
+      toMeasurement: csToolsAnnotation =>
+        PlanarFreehandROI.toMeasurement(
+          csToolsAnnotation,
+          displaySetService,
+          cornerstoneViewportService,
+          _getValueTypeFromToolType,
+          customizationService
+        ),
+      matchingCriteria: [
+        {
+          valueType: MeasurementService.VALUE_TYPES.POLYLINE,
+        },
+      ],
+    },
+    CircularStampContourTool: {
       toAnnotation: PlanarFreehandROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
         PlanarFreehandROI.toMeasurement(

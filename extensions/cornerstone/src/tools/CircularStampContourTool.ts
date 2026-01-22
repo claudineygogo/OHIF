@@ -242,9 +242,9 @@ class CircularStampContourTool extends PlanarFreehandContourSegmentationTool {
     for (let i = 0; i < samples; i++) {
       const theta = (2 * Math.PI * i) / samples;
       const off = [
-        Math.cos(theta) * radiusMM * colDir[0] + Math.sin(theta) * radiusMM * rowDir[0],
-        Math.cos(theta) * radiusMM * colDir[1] + Math.sin(theta) * radiusMM * rowDir[1],
-        Math.cos(theta) * radiusMM * colDir[2] + Math.sin(theta) * radiusMM * rowDir[2],
+        Math.cos(theta) * radiusMM * rowDir[0] + Math.sin(theta) * radiusMM * colDir[0],
+        Math.cos(theta) * radiusMM * rowDir[1] + Math.sin(theta) * radiusMM * colDir[1],
+        Math.cos(theta) * radiusMM * rowDir[2] + Math.sin(theta) * radiusMM * colDir[2],
       ];
       polyline.push([center[0] + off[0], center[1] + off[1], center[2] + off[2]]);
     }

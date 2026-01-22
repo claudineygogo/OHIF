@@ -146,7 +146,16 @@ function createTools({ utilityModule, commandsManager }) {
         },
       },
       { toolName: toolNames.LivewireContourSegmentation },
-      { toolName: toolNames.SculptorTool },
+      {
+        toolName: toolNames.SculptorTool,
+        configuration: {
+          referencedToolNames: [
+            toolNames.PlanarFreehandROI,
+            toolNames.PlanarFreehandContourSegmentation,
+            'CircularStampContourTool',
+          ],
+        },
+      },
       { toolName: toolNames.PlanarFreehandROI },
       {
         toolName: 'CatmullRomSplineROI',

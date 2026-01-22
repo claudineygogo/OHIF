@@ -40,6 +40,7 @@ const initMeasurementService = (
     UltrasoundDirectional,
     UltrasoundPleuraBLine,
     SegmentBidirectional,
+    CircularStampContourTool,
   } = measurementServiceMappingsFactory(
     measurementService,
     displaySetService,
@@ -192,6 +193,14 @@ const initMeasurementService = (
     SegmentBidirectional.matchingCriteria,
     SegmentBidirectional.toAnnotation,
     SegmentBidirectional.toMeasurement
+  );
+
+  measurementService.addMapping(
+    csTools3DVer1MeasurementSource,
+    'CircularStampContourTool',
+    CircularStampContourTool.matchingCriteria,
+    CircularStampContourTool.toAnnotation,
+    CircularStampContourTool.toMeasurement
   );
 
   return csTools3DVer1MeasurementSource;

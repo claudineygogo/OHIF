@@ -14,6 +14,7 @@ const supportedTools = [
   'UltrasoundDirectionalTool',
   'UltrasoundPleuraBLineTool',
   'SegmentBidirectional',
+  'CircularStampContourTool',
 ];
 
 export default supportedTools;

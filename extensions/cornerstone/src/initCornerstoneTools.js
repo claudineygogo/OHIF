@@ -42,7 +42,7 @@ import {
   RegionSegmentPlusTool,
   SegmentLabelTool,
   LivewireContourSegmentationTool,
-  SculptorTool,
+  // SculptorTool, // Replaced by AdvancedSculptorTool
   SplineContourSegmentationTool,
   LabelMapEditWithContourTool,
 } from '@cornerstonejs/tools';
@@ -52,6 +52,7 @@ import * as polySeg from '@cornerstonejs/polymorphic-segmentation';
 import CalibrationLineTool from './tools/CalibrationLineTool';
 import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 import CircularStampContourTool from './tools/CircularStampContourTool';
+import AdvancedSculptorTool from './tools/AdvancedSculptorTool';
 
 export default function initCornerstoneTools(configuration = {}) {
   CrosshairsTool.isAnnotation = false;
@@ -115,7 +116,7 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(MarkerLabelmapTool);
   addTool(RegionSegmentPlusTool);
   addTool(LivewireContourSegmentationTool);
-  addTool(SculptorTool);
+  addTool(AdvancedSculptorTool);
   addTool(SplineContourSegmentationTool);
   addTool(LabelMapEditWithContourTool);
   addTool(CircularStampContourTool);
@@ -179,7 +180,7 @@ const toolNames = {
   MarkerLabelmap: MarkerLabelmapTool.toolName,
   RegionSegmentPlus: RegionSegmentPlusTool.toolName,
   LivewireContourSegmentation: LivewireContourSegmentationTool.toolName,
-  SculptorTool: SculptorTool.toolName,
+  SculptorTool: AdvancedSculptorTool.toolName,
   SplineContourSegmentation: SplineContourSegmentationTool.toolName,
   LabelMapEditWithContourTool: LabelMapEditWithContourTool.toolName,
   CircularStampContourTool: CircularStampContourTool.toolName,
