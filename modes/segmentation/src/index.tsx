@@ -145,6 +145,7 @@ function modeFactory({ modeConfiguration }) {
       ]);
       toolbarService.updateSection('ContourTools', [
         'PlanarFreehandContourSegmentationTool',
+        'CircularStampContourTool',
         'SculptorTool',
         'SplineContourSegmentationTool',
         'LivewireContourSegmentationTool',

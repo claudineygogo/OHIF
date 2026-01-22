@@ -602,6 +602,51 @@ const toolbarButtons: Button[] = [
     },
   },
   {
+    id: 'CircularStampContourTool',
+    uiType: 'ohif.toolBoxButton',
+    props: {
+      icon: 'tool-circle',
+      label: 'Stamp',
+      commands: [
+        'setToolActiveToolbar',
+        {
+          commandName: 'activateSelectedSegmentationOfType',
+          commandOptions: {
+            segmentationRepresentationType: 'Contour',
+          },
+        },
+      ],
+      evaluate: [
+        {
+          name: 'evaluate.cornerstone.segmentation',
+          toolNames: ['CircularStampContourTool'],
+          disabledText: 'Create new segmentation to enable this tool.',
+        },
+        {
+          name: 'evaluate.cornerstone.hasSegmentationOfType',
+          segmentationRepresentationType: 'Contour',
+        },
+      ],
+      options: [
+        {
+          name: 'Radius (mm)',
+          id: 'stamp-radius',
+          type: 'range',
+          min: 1,
+          max: 50,
+          step: 1,
+          value: 10,
+          commands: [
+            {
+              commandName: 'setStampRadius',
+              commandOptions: { toolNames: ['CircularStampContourTool'] },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     id: 'SculptorTool',
     uiType: 'ohif.toolBoxButton',
     props: {

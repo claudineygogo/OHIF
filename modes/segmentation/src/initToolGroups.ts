@@ -139,6 +139,12 @@ function createTools({ utilityModule, commandsManager }) {
       {
         toolName: toolNames.PlanarFreehandContourSegmentation,
       },
+      {
+        toolName: 'CircularStampContourTool',
+        configuration: {
+          commandsManager,
+        },
+      },
       { toolName: toolNames.LivewireContourSegmentation },
       { toolName: toolNames.SculptorTool },
       { toolName: toolNames.PlanarFreehandROI },
