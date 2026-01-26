@@ -4,6 +4,7 @@ import toolbarButtons from './toolbarButtons';
 import initToolGroups from './initToolGroups';
 import setUpAutoTabSwitchHandler from './utils/setUpAutoTabSwitchHandler';
 import StructureSelectionModal from './components/StructureSelectionModal';
+import LoadingModal from './components/LoadingModal';
 
 const ohif = {
   layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
@@ -290,6 +291,16 @@ function modeFactory({ modeConfiguration }) {
 
           isReferenceSegmentationLoading = true;
 
+          // SHOW LOADING SPINNER
+          uiModalService.show({
+            content: LoadingModal,
+            contentProps: {
+              message: 'Initializing Scoring Engine...',
+            },
+            title: 'Please Wait',
+            shouldCloseOnOverlayClick: false,
+          });
+
           try {
             // Load the SEG DisplaySet first
             if (segDisplaySet.load) {
@@ -356,6 +367,30 @@ function modeFactory({ modeConfiguration }) {
                   commandsManager.run('setToolActive', {
                     toolName: 'CircularBrush',
                   });
+                  // Open the Right Panel (Segmentation Tools) now that we are ready
+                  // Using 'customizationService' or just forcing it open via commands not always standard
+                  // But we can usually rely on 'setPanelOpen' if implemented, or we use panelService.
+                  // Since we have panelService in scope:
+                  // Note: The panelId must match what was registered.
+                  // cornerstone.labelMapSegmentationPanel = '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMap'
+
+                  // Try to open it:
+                  try {
+                    // This is the preferred way in v3.8+ if available, but let's check legacy/default ways
+                    if (panelService) {
+                      // Activate the panel (makes it visible)
+                      panelService.activatePanel(cornerstone.labelMapSegmentationPanel);
+                      // Or open it (expands the sidebar)
+                      // Actually 'togglePanel' is common command.
+                      // Let's assume manual toggle or activation.
+                      // Ideally:
+                      commandsManager.run('showPanel', {
+                        id: cornerstone.labelMapSegmentationPanel,
+                      });
+                    }
+                  } catch (e) {
+                    console.warn('Could not auto-open panel', e);
+                  }
                 }, 100);
               }
             }
@@ -363,6 +398,8 @@ function modeFactory({ modeConfiguration }) {
           } catch (error) {
             console.error('❌ [SegScorer] Load failed:', error);
             isReferenceSegmentationLoading = false;
+          } finally {
+            uiModalService.hide();
           }
         }
       };
@@ -621,7 +658,7 @@ function modeFactory({ modeConfiguration }) {
                 '@ohif/extension-default.panelModule.scorePanel',
               ],
               rightPanelResizable: true,
-              // leftPanelClosed: true,
+              rightPanelClosed: true,
               viewports: [
                 {
                   namespace: cornerstone.viewport,
