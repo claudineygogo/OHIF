@@ -1,0 +1,56 @@
+.structure-selection-modal {
+  padding: 20px;
+  min-width: 400px;
+  color: white;
+}
+
+.modal-title {
+  margin-bottom: 20px;
+  color: #5bb5e6;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-size: 14px;
+  color: #9ccae6;
+}
+
+.custom-select {
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #0c1c2e;
+  border: 1px solid #3a5f8a;
+  color: white;
+  width: 100%;
+}
+
+.ohif-input {
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #0c1c2e;
+  border: 1px solid #3a5f8a;
+  color: white;
+  width: 100%;
+}
+.ohif-input:focus {
+  border-color: #5bb5e6;
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

@@ -1045,11 +1045,25 @@ const commandsModule = ({
         }
         console.log(`Compressed data: ${nonZeroIndices.length} non-zero voxels`);
 
+        // Retrieve Context
+        const contextString = sessionStorage.getItem('OHIF_SCORER_CONTEXT');
+        let context = {};
+        if (contextString) {
+          try {
+            context = JSON.parse(contextString);
+            console.log('Using Scorer Context:', context);
+          } catch (e) {
+            console.error('Failed to parse scorer context', e);
+          }
+        }
+
         const payload = {
           non_zero_indices: nonZeroIndices,
           origin_slice_index: origin_slice_index,
           timestamp: new Date().toISOString(),
           reference_mask_data: 'placeholder_for_backend_lookup',
+          patient_id: context.patientId,
+          structure_name: context.structureName,
         };
 
         const response = await fetch('http://localhost:5001/grade_submission', {

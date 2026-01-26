@@ -1,22 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
     <title>OHIF++ Segmentation Exercise</title>
-    <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="css/styles.css"
+    />
     <script src="js/scorm-handler.js"></script>
     <script src="js/message-bridge.js"></script>
   </head>
   <body>
     <!-- Instructions Screen -->
-    <div id="instructions-screen" class="screen active">
+    <div
+      id="instructions-screen"
+      class="screen active"
+    >
       <div class="instructions-content">
         <h1 id="instruction-title">Segmentation Exercise</h1>
         <p id="text-welcome">Welcome to the OHIF++ Segmentation Exercise.</p>
         <p id="text-description">
-          You will be asked to contour a specific anatomical structure on the
-          provided CT scan.
+          You will be asked to contour a specific anatomical structure on the provided CT scan.
         </p>
         <p id="text-instructions-header">Instructions:</p>
         <ul id="instructions-list">
@@ -24,15 +32,22 @@
           <li>Click "Submit" when you are finished</li>
           <li>Your score will be calculated automatically</li>
         </ul>
-        <button id="start-button" class="primary-button">Start Exercise</button>
+        <button
+          id="start-button"
+          class="primary-button"
+        >
+          Start Exercise
+        </button>
       </div>
     </div>
 
     <!-- Viewer Screen -->
-    <div id="viewer-screen" class="screen">
+    <div
+      id="viewer-screen"
+      class="screen"
+    >
       <iframe
         id="ohif-viewer"
-        src="{{CASE_URL}}"
         allow="camera; microphone; fullscreen"
         allowfullscreen
       >
@@ -40,14 +55,22 @@
     </div>
 
     <!-- Results Screen -->
-    <div id="results-screen" class="screen">
+    <div
+      id="results-screen"
+      class="screen"
+    >
       <div class="results-content">
         <h1 id="result-title">Exercise Complete</h1>
         <p id="score-display">
           <span id="score-label">Your Dice Score: </span><span id="score-value">--</span>
         </p>
         <p id="feedback-message"></p>
-        <button id="try-again-button" class="primary-button">Try Again</button>
+        <button
+          id="try-again-button"
+          class="primary-button"
+        >
+          Try Again
+        </button>
       </div>
     </div>
 
@@ -56,20 +79,18 @@
       // Used by message-bridge.js for screen transitions
       function showScreen(screenName) {
         const screens = {
-          instructions: document.getElementById("instructions-screen"),
-          viewer: document.getElementById("viewer-screen"),
-          results: document.getElementById("results-screen"),
+          instructions: document.getElementById('instructions-screen'),
+          viewer: document.getElementById('viewer-screen'),
+          results: document.getElementById('results-screen'),
         };
-        
-        Object.values(screens).forEach((screen) =>
-          screen.classList.remove("active")
-        );
-        
+
+        Object.values(screens).forEach(screen => screen.classList.remove('active'));
+
         if (screens[screenName]) {
-          screens[screenName].classList.add("active");
+          screens[screenName].classList.add('active');
         }
       }
-      
+
       // Event listeners are handled by message-bridge.js
     </script>
   </body>

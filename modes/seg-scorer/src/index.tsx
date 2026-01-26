@@ -1,7 +1,9 @@
+import { DicomMetadataStore } from '@ohif/core';
 import { id } from './id';
 import toolbarButtons from './toolbarButtons';
 import initToolGroups from './initToolGroups';
 import setUpAutoTabSwitchHandler from './utils/setUpAutoTabSwitchHandler';
+import StructureSelectionModal from './components/StructureSelectionModal';
 
 const ohif = {
   layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
@@ -67,6 +69,7 @@ function modeFactory({ modeConfiguration }) {
         panelService,
         displaySetService,
         customizationService,
+        uiModalService,
       } = servicesManager.services;
 
       // Add customization to show the submit button in the segmentation panel
@@ -78,7 +81,6 @@ function modeFactory({ modeConfiguration }) {
       });
 
       // CSS HACK: Hide specific header elements for this mode
-      // This is necessary because the layout configuration doesn't easily support removing these header specific items
       if (typeof document !== 'undefined') {
         const styleId = 'seg-scorer-mode-style';
         if (!document.getElementById(styleId)) {
@@ -89,16 +91,15 @@ function modeFactory({ modeConfiguration }) {
             [data-cy="return-to-work-list"] {
               display: none !important;
             }
-            /* Hide Settings Cogwheel (The last item in the right header section) */
+            /* Hide Settings Cogwheel */
             .absolute.right-0 > .flex-shrink-0:last-child {
                display: none !important;
             }
-            /* Hide the 'Label map segmentations' panel header (Accordion Trigger) */
-            /* Using a broad selector for the trigger button inside the panel section */
+            /* Hide the 'Label map segmentations' panel header */
             .flex-shrink-0.overflow-hidden button[type="button"][aria-expanded] {
               display: none !important;
             }
-            /* Hide the inner headers of the segmentation table (Expanded Header) */
+            /* Hide the inner headers of the segmentation table */
             .bg-primary-dark.flex.h-10.w-full.items-center.space-x-1 {
                display: none !important;
             }
@@ -107,20 +108,14 @@ function modeFactory({ modeConfiguration }) {
                display: none !important;
             }
             /* Hide 'Shape' sub-element label in Tool Settings */
-            .flex.items-center.justify-between.text-\[13px\] {
+            .flex.items-center.justify-between.text-\\[13px\\] {
                display: none !important;
             }
 
             /* --- TAB VISIBILITY LOGIC --- */
-
-            /* Initially (No grading): Hide Score Panel Tab */
-            /* Using precise data-cy for Score Panel */
             body:not(.grading-complete) div[data-cy="scorePanel-btn"] {
               display: none !important;
             }
-
-            /* Grading Complete: Hide Label Map Tab, Show Score Panel Tab */
-            /* Using precise data-cy for Label Map Panel */
             body.grading-complete div[data-cy="panelSegmentationWithToolsLabelMap-btn"] {
               display: none !important;
             }
@@ -153,7 +148,6 @@ function modeFactory({ modeConfiguration }) {
         'Layout',
         'Crosshairs',
         'MoreTools',
-        // 'SubmitContour', // Removed from toolbar
       ]);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
@@ -203,10 +197,7 @@ function modeFactory({ modeConfiguration }) {
         'ContourTools',
       ]);
 
-      toolbarService.updateSection('LabelMapTools', [
-        'BrushTools',
-        // Removed: LabelmapSlicePropagation, MarkerLabelmap, RegionSegmentPlus, Shapes, LabelMapEditWithContour
-      ]);
+      toolbarService.updateSection('LabelMapTools', ['BrushTools']);
       toolbarService.updateSection('ContourTools', [
         'PlanarFreehandContourSegmentationTool',
         'SculptorTool',
@@ -221,17 +212,13 @@ function modeFactory({ modeConfiguration }) {
         'ContourUtilities',
       ]);
 
-      toolbarService.updateSection('LabelMapUtilities', [
-        // Moved InterpolateLabelmap to BrushTools
-        // Removed: SegmentBidirectional
-      ]);
+      toolbarService.updateSection('LabelMapUtilities', []);
       toolbarService.updateSection('ContourUtilities', [
         'LogicalContourOperations',
         'SimplifyContours',
         'SmoothContours',
       ]);
 
-      // Removed Threshold from BrushTools, added InterpolateLabelmap
       toolbarService.updateSection('BrushTools', ['Brush', 'Eraser', 'InterpolateLabelmap']);
 
       const { unsubscribeAutoTabSwitchEvents } = setUpAutoTabSwitchHandler({
@@ -246,66 +233,84 @@ function modeFactory({ modeConfiguration }) {
       let referenceSegmentationLoaded = false;
       let isReferenceSegmentationLoading = false;
 
-      // Automatically load reference segmentation, hide it, and create user layer
-      const loadReferenceSegmentation = async () => {
+      // PARSE URL PARAMS
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlPatientId = searchParams.get('patientId');
+      const urlStructure = searchParams.get('structure'); // Track setup to prevent unexpected modal reopenings
+
+      // Track if we have completed the setup (selection made) to prevent modal from reopening
+      let setupComplete = false;
+
+      // 4. Persistence
+      const setSessionContext = (pid, struct) => {
+        sessionStorage.setItem(
+          'OHIF_SCORER_CONTEXT',
+          JSON.stringify({
+            patientId: pid,
+            structureName: struct,
+          })
+        );
+        console.log(`[SegScorer] Context set: ${pid} / ${struct}`);
+      };
+
+      // Automatically load reference segmentation
+      // MODIFIED: Now accepts a specific targetSegId (simulating user selection)
+      const loadReferenceSegmentation = async (targetStructureName, targetSegId) => {
         if (referenceSegmentationLoaded || isReferenceSegmentationLoading) {
-          return; // Already loaded or currently loading, skip
+          return;
         }
 
         const displaySets = displaySetService.getActiveDisplaySets();
+        let segDisplaySet;
 
-        // DEBUG: Log ALL display sets to understand what Orthanc is providing
-        console.log('🔍 [AUTO-LOAD] All active display sets:', displaySets);
-        console.log('🔍 [AUTO-LOAD] Number of display sets:', displaySets.length);
-
-        // DEBUG: Log all SEG display sets and their metadata
-        const segDisplaySets = displaySets.filter(ds => ds.Modality === 'SEG');
-        console.log('🔍 [AUTO-LOAD] SEG display sets found:', segDisplaySets.length);
-        segDisplaySets.forEach((ds, index) => {
-          console.log(`🔍 [AUTO-LOAD] SEG #${index + 1}:`, {
-            SeriesDescription: ds.SeriesDescription,
-            SeriesNumber: ds.SeriesNumber,
-            displaySetInstanceUID: ds.displaySetInstanceUID,
-            Modality: ds.Modality,
-            fullDisplaySet: ds,
-          });
-        });
-
-        // Look for reference segmentation - now looking for 'Reference Segmentation'
-        const segDisplaySet = displaySets.find(
-          ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Reference Segmentation'
-        );
+        if (targetSegId) {
+          // 1. Direct ID match (Simulated User Click)
+          segDisplaySet = displaySets.find(ds => ds.displaySetInstanceUID === targetSegId);
+        } else {
+          // 2. Fallback: This path should ideally not be reached if the "Simulated Modal" works
+          // keeping it for safety
+          console.warn(
+            '[SegScorer] verifyAutoMatch: Calling load w/o ID. Attempting fallback fuzzy match...'
+          );
+          const lowerTarget = targetStructureName.toLowerCase();
+          segDisplaySet = displaySets.find(
+            ds =>
+              ds.Modality === 'SEG' &&
+              ((ds.SeriesDescription && ds.SeriesDescription.toLowerCase().includes(lowerTarget)) ||
+                (ds.segmentLabels &&
+                  ds.segmentLabels.some(label => label.toLowerCase().includes(lowerTarget))))
+          );
+        }
 
         if (segDisplaySet) {
-          console.log('✅ Found reference SEG DisplaySet:', segDisplaySet);
+          console.log('✅ [SegScorer] Loading Reference SEG:', {
+            id: segDisplaySet.displaySetInstanceUID,
+            desc: segDisplaySet.SeriesDescription,
+          });
+
           isReferenceSegmentationLoading = true;
 
           try {
-            // Load the SEG DisplaySet first (if not already loaded)
-            console.log('📥 Loading SEG DisplaySet...');
+            // Load the SEG DisplaySet first
             if (segDisplaySet.load) {
-              await segDisplaySet.load({ headers: {} });
+              await segDisplaySet.load({ headers: {} }); // Force load to ensure content is ready
             }
-            console.log('✅ SEG DisplaySet ready');
 
             // Create the segmentation
             const segmentationId =
               await segmentationService.createSegmentationForSEGDisplaySet(segDisplaySet);
-            console.log('✅ Reference segmentation created:', segmentationId);
 
-            // Store the ID for later use (e.g. revealing after submission)
+            // Store the ID
             commandsManager.run('setReferenceSegmentationId', { segmentationId });
 
-            // Add the segmentation as a representation to the active viewport
+            // Add to active viewport
             const activeViewportId = viewportGridService.getActiveViewportId();
             if (activeViewportId) {
-              // Add it first to ensure it exists in the viewport
               await segmentationService.addSegmentationRepresentation(activeViewportId, {
                 segmentationId,
               });
-              console.log('✅ Reference segmentation added to viewport:', activeViewportId);
 
-              // HIDE IT IMMEDIATELY - Iterate over segments
+              // HIDE IT
               const segmentation = segmentationService.getSegmentation(segmentationId);
               if (segmentation && segmentation.segments) {
                 const segmentIndices = Object.keys(segmentation.segments);
@@ -317,35 +322,28 @@ function modeFactory({ modeConfiguration }) {
                     false
                   );
                 }
-                console.log('🙈 Reference segmentation segments hidden');
-              } else {
-                console.warn('⚠️ Could not find segments to hide individually');
               }
 
-              // Create a NEW segmentation for the user to draw on using the correct command
-              const newSegmentationId = await commandsManager.run('createLabelmapForViewport', {
+              // Create User Layer
+              const newSegmentationId = (await commandsManager.run('createLabelmapForViewport', {
                 viewportId: activeViewportId,
-              });
-              console.log('✨ Created new user segmentation layer:', newSegmentationId);
+              })) as string;
+              console.log('✨ [SegScorer] User layer created:', newSegmentationId);
 
-              // Customize the new segmentation
+              // Customize User Layer
               if (newSegmentationId) {
-                // 1. Rename Segmentation
                 const segmentation = segmentationService.getSegmentation(newSegmentationId);
                 if (segmentation) {
                   segmentation.label = 'User Segmentation';
-                  // Force update if necessary, though direct property set might be enough depending on implementation
-                  // segmentationService.updateSegmentation(newSegmentationId, { label: 'User Segmentation' });
                 }
 
-                // 2. Rename Segment 1 to 'Structure 1' and set Color to #F20505
-                // Note: Newly created labelmap usually has segment index 1 active
                 const segmentIndex = 1;
-
-                // Update label
-                segmentationService.setSegmentLabel(newSegmentationId, segmentIndex, 'Structure 1');
-
-                // Update color (#1E19E2 is [30, 25, 226, 255])
+                segmentationService.setSegmentLabel(
+                  newSegmentationId,
+                  segmentIndex,
+                  targetStructureName || 'Structure 1'
+                );
+                // Set Color (Blue)
                 segmentationService.setSegmentColor(
                   activeViewportId,
                   newSegmentationId,
@@ -353,71 +351,195 @@ function modeFactory({ modeConfiguration }) {
                   [30, 25, 226, 255]
                 );
 
-                console.log(
-                  '🎨 Customized user segmentation: Name=User Segmentation, Segment=Structure 1, Color=#1E19E2'
-                );
-
-                // 3. Activate the Brush tool automatically
-                // Use the tool name 'CircularBrush' which is the actual Cornerstone tool name
+                // Activate Brush
                 setTimeout(() => {
                   commandsManager.run('setToolActive', {
                     toolName: 'CircularBrush',
                   });
                 }, 100);
-                console.log('🖌️ Brush tool (CircularBrush) activated automatically');
               }
-            } else {
-              console.warn('⚠️ No active viewport found');
             }
-
-            // Mark as loaded to prevent duplicate attempts
             referenceSegmentationLoaded = true;
-
-            console.log('✅ Reference segmentation loaded, hidden, and user layer created');
           } catch (error) {
-            console.error('❌ Error loading reference segmentation:', error);
-            // Reset loading flag on error so we can try again if needed
+            console.error('❌ [SegScorer] Load failed:', error);
             isReferenceSegmentationLoading = false;
-          }
-        } else {
-          // DEBUG: No exact match found, log a warning
-          console.warn(
-            '⚠️ [AUTO-LOAD] No SEG with SeriesDescription="Reference Segmentation" found'
-          );
-
-          // Try fallback to old name 'Segmentation' for backward compatibility
-          const fallbackSegDisplaySet = displaySets.find(
-            ds => ds.Modality === 'SEG' && ds.SeriesDescription === 'Segmentation'
-          );
-
-          if (fallbackSegDisplaySet) {
-            console.warn(
-              '⚠️ [AUTO-LOAD] Found SEG with old name "Segmentation" - consider renaming to "Reference Segmentation"'
-            );
-            console.log(
-              'ℹ️ [AUTO-LOAD] You can manually rename this in your DICOM data to "Reference Segmentation"'
-            );
-          } else if (segDisplaySets.length > 0) {
-            console.warn(
-              '⚠️ [AUTO-LOAD] SEG files exist but none match expected names. Available names:',
-              segDisplaySets.map(ds => ds.SeriesDescription)
-            );
-          } else {
-            console.log('ℹ️ [AUTO-LOAD] No SEG display sets found in study - skipping auto-load');
           }
         }
       };
 
-      // Subscribe to DISPLAY_SETS_ADDED to handle async loading
-      const unsubscribeDisplaySetsAdded = displaySetService.subscribe(
-        displaySetService.EVENTS.DISPLAY_SETS_ADDED,
-        loadReferenceSegmentation
-      );
+      // Modal Logic
+      const showSelectionModal = () => {
+        if (setupComplete) {
+          return;
+        }
 
-      // Also try to load immediately in case display sets are already available
-      loadReferenceSegmentation();
+        const displaySets = displaySetService.getActiveDisplaySets();
+        // Filter for only SEG
+        const segSets = displaySets.filter(ds => ds.Modality === 'SEG');
 
-      _unsubscriptions.push(unsubscribeDisplaySetsAdded);
+        // Extract PatientID from the first available display set if not in URL
+        let currentPatientId = urlPatientId;
+        if (!currentPatientId && displaySets.length > 0) {
+          const ds = displaySets[0] as any;
+          if (ds.StudyInstanceUID) {
+            const study = DicomMetadataStore.getStudy(ds.StudyInstanceUID);
+            if (study) {
+              currentPatientId = study.PatientID;
+            }
+          }
+
+          // Fallback
+          if (!currentPatientId) {
+            currentPatientId =
+              ds.PatientID ||
+              (ds.images && ds.images[0] && ds.images[0].PatientID) ||
+              (ds.instance && ds.instance.PatientID);
+          }
+        }
+
+        uiModalService.show({
+          content: StructureSelectionModal,
+          contentProps: {
+            segDisplaySets: segSets,
+            onSelect: ({ patientId, structureName, selectedSegId }) => {
+              setupComplete = true; // Mark as complete to prevent reopening
+              uiModalService.hide();
+              setSessionContext(patientId, structureName);
+              loadReferenceSegmentation(structureName, selectedSegId);
+            },
+            onClose: () => uiModalService.hide(),
+            patientId: currentPatientId || 'Unknown Patient',
+          },
+          title: 'Welcome to Segmentation Scorer',
+          // Prevent closing by clicking outside?
+          shouldCloseOnOverlayClick: false,
+        });
+      };
+
+      // Initialize Logic
+      console.log('[SegScorer] 🚀 Mode initialization...');
+      if (urlPatientId && urlStructure) {
+        console.log(
+          `[SegScorer] ✅ AUTOMATIC MODE: Patient=${urlPatientId}, Structure=${urlStructure}`
+        );
+        setSessionContext(urlPatientId, urlStructure);
+
+        // --- SIMULATED MODAL AGENT ---
+        // This function acts like the user staring at the modal and waiting for the right option to appear.
+        const attemptAutoMatchAndLoad = () => {
+          if (referenceSegmentationLoaded || isReferenceSegmentationLoading) {
+            return;
+          }
+
+          const displaySets = displaySetService.getActiveDisplaySets();
+          const segSets = displaySets.filter(ds => ds.Modality === 'SEG');
+
+          if (segSets.length === 0) {
+            return;
+          }
+
+          const activeViewportId = viewportGridService.getActiveViewportId();
+          if (!activeViewportId) {
+            return;
+          }
+
+          console.log(
+            `[SegScorer] Background Agent: Searching for "${urlStructure}" among ${segSets.length} candidates...`
+          );
+          segSets.forEach(ds => console.log(` - Candidate: ${ds.SeriesDescription}`));
+
+          // Standardize target
+          const decodedStructure = decodeURIComponent(urlStructure);
+          const target = decodedStructure.toLowerCase().trim();
+
+          console.log(`[SegScorer] Background Agent: Target Structure (Raw): "${urlStructure}"`);
+          console.log(
+            `[SegScorer] Background Agent: Target Structure (Decoded): "${decodedStructure}"`
+          );
+          console.log(`[SegScorer] Background Agent: Target Structure (Normalized): "${target}"`);
+
+          // Priority 1: Exact Match on Series Description
+          let matchedSeg = segSets.find(
+            ds => ds.SeriesDescription && ds.SeriesDescription.toLowerCase().trim() === target
+          );
+
+          // Priority 2: Fuzzy Match (Contains) on Series Description
+          if (!matchedSeg) {
+            matchedSeg = segSets.find(
+              ds => ds.SeriesDescription && ds.SeriesDescription.toLowerCase().includes(target)
+            );
+          }
+
+          // Priority 3: Check internal Segment Labels
+          if (!matchedSeg) {
+            matchedSeg = segSets.find(
+              (ds: any) =>
+                ds.segmentLabels &&
+                ds.segmentLabels.some(label => label.toLowerCase().includes(target))
+            );
+          }
+
+          if (matchedSeg) {
+            console.log(
+              `✅ [SegScorer] Background Agent: Match Found! Auto-selecting: ${matchedSeg.SeriesDescription} (UID: ${matchedSeg.displaySetInstanceUID})`
+            );
+            loadReferenceSegmentation(urlStructure, matchedSeg.displaySetInstanceUID);
+          } else {
+            console.warn(
+              `[SegScorer] Background Agent: No match found yet for "${urlStructure}". Waiting for more data...`
+            );
+          }
+        };
+
+        // Subscribe to verify continuously
+        const unsubscribeDS = displaySetService.subscribe(
+          displaySetService.EVENTS.DISPLAY_SETS_ADDED,
+          attemptAutoMatchAndLoad
+        );
+        _unsubscriptions.push(unsubscribeDS);
+
+        // NEW: Also retry when viewport becomes active (crucial for user layer creation)
+        const unsubscribeVP = viewportGridService.subscribe(
+          viewportGridService.EVENTS.ACTIVE_VIEWPORT_ID_CHANGED,
+          attemptAutoMatchAndLoad
+        );
+        _unsubscriptions.push(unsubscribeVP);
+
+        // Polling fall-back (Vital for race conditions)
+        const intervalId = setInterval(attemptAutoMatchAndLoad, 2000);
+        _unsubscriptions.push(() => clearInterval(intervalId));
+
+        // Try immediately
+        setTimeout(attemptAutoMatchAndLoad, 500);
+      } else {
+        console.log('[SegScorer] No URL Params. Waiting for data to show Modal...');
+        // We need to wait until at least some display sets are loaded to show the modal with SEG options
+        // Or just show it immediately with empty list if none
+
+        // Better: subscribe, if we get sets, update?
+        // Modal component updates?
+        // For simplicity: Wait for first batch of display sets
+
+        const handleDisplaySetsAdded = () => {
+          const displaySets = displaySetService.getActiveDisplaySets();
+          if (displaySets.length > 0) {
+            showSelectionModal();
+            // Unsubscribe single-shot? No, user might load more?
+            // Actually we only want to show modal ONCE on start.
+          }
+        };
+
+        const unsubscribe = displaySetService.subscribe(
+          displaySetService.EVENTS.DISPLAY_SETS_ADDED,
+          handleDisplaySetsAdded
+        );
+        _unsubscriptions.push(unsubscribe);
+
+        // Check immediately
+        if (displaySetService.getActiveDisplaySets().length > 0) {
+          showSelectionModal();
+        }
+      }
     },
     onModeExit: ({ servicesManager }: withAppTypes) => {
       const {

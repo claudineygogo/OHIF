@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>SCORM Parameter Test</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+      }
+      h1 {
+        color: #4ade80;
+        border-bottom: 2px solid #4ade80;
+        padding-bottom: 10px;
+      }
+      h2 {
+        color: #60a5fa;
+        margin-top: 30px;
+      }
+      .test-section {
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #4ade80;
+      }
+      .pass {
+        color: #4ade80;
+        font-weight: bold;
+      }
+      .fail {
+        color: #f87171;
+        font-weight: bold;
+      }
+      .code {
+        background: #1a1a1a;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        margin: 10px 0;
+        overflow-x: auto;
+      }
+      button {
+        background: #4ade80;
+        color: #1a1a1a;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background: #22c55e;
+      }
+      #iframe-container {
+        margin: 20px 0;
+        border: 2px solid #4ade80;
+        border-radius: 8px;
+        height: 600px;
+        background: white;
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      .warning {
+        background: #854d0e;
+        color: #fef3c7;
+        padding: 15px;
+        border-radius: 6px;
+        margin: 15px 0;
+        border-left: 4px solid #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 SCORM Parameter Test Tool</h1>
+    <p>This tool helps diagnose why SCORM package parameters aren't being recognized by OHIF.</p>
+
+    <div class="test-section">
+      <h2>Test Configuration</h2>
+      <div class="code">
+        <strong>Expected Parameters:</strong><br />
+        • patientId: <span id="expected-patient">SBRT_Spine</span><br />
+        • structure: <span id="expected-structure">Heart</span><br />
+        • StudyInstanceUID:
+        <span id="expected-study">1.2.826.0.1.3680043.8.176.2016811145342929.2279.8727571455</span>
+      </div>
+
+      <p><strong>Instructions:</strong></p>
+      <ol>
+        <li>Click "Test Direct URL" to test OHIF with URL parameters directly</li>
+        <li>Open browser DevTools Console (F12)</li>
+        <li>Look for console messages starting with <code>[SegScorer]</code></li>
+        <li>Check for: <code style="color: #f87171">!!! URL Params Detected !!!</code></li>
+      </ol>
+    </div>
+
+    <div class="test-section">
+      <h2>Quick Tests</h2>
+
+      <button onclick="testDirectURL()">🔗 Test Direct URL</button>
+
+      <button onclick="testWithIframe()">🖼️ Test with Iframe (Like SCORM)</button>
+
+      <button onclick="showConsoleInstructions()">📋 Show Console Commands</button>
+    </div>
+
+    <div
+      class="warning"
+      style="display: none"
+      id="console-instructions"
+    >
+      <h3>📋 Console Commands to Run Manually</h3>
+      <p>Open OHIF in the browser, then run these commands in the Console:</p>
+
+      <div class="code">
+        // Check if URL parameters are parsed<br />
+        const params = new URLSearchParams(window.location.search);<br />
+        console.log('Patient ID:', params.get('patientId'));<br />
+        console.log('Structure:', params.get('structure'));<br />
+        <br />
+        // Check what displaySets are available<br />
+        window.ohif = window.ohif || {};<br />
+        // Note: This requires OHIF to be fully loaded
+      </div>
+
+      <button onclick="copyToClipboard(this.previousElementSibling.innerText)">
+        📋 Copy Commands
+      </button>
+    </div>
+
+    <div
+      id="iframe-container"
+      style="display: none"
+    >
+      <iframe
+        id="test-iframe"
+        src=""
+      ></iframe>
+    </div>
+
+    <div class="test-section">
+      <h2>Expected Console Output</h2>
+
+      <div class="code">
+        <span class="pass">✅ SHOULD SEE:</span><br />
+        !!! URL Params Detected !!! { urlPatientId: 'SBRT_Spine', urlStructure: 'Heart' }<br />
+        [SegScorer] URL Params found: Patient=SBRT_Spine, Structure=Heart<br />
+        [SegScorer] Attempting to load reference segmentation...<br />
+        [SegScorer] Target: "Heart" (ID: null)<br />
+        <br />
+        <span class="fail">❌ IF YOU SEE THIS INSTEAD:</span><br />
+        [SegScorer] No URL Params. Waiting for data to show Modal...<br />
+        <br />
+        → This means URL parameters are NOT being detected
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>Diagnostic Questions</h2>
+
+      <div style="background: #1a1a1a; padding: 15px; border-radius: 6px">
+        <p>
+          <strong>Question 1:</strong> Do you see
+          <code style="color: #f87171">!!! URL Params Detected !!!</code> in the console?
+        </p>
+        <ul>
+          <li>✅ YES → Parameters ARE being passed correctly</li>
+          <li>❌ NO → Parameters are NOT reaching OHIF</li>
+        </ul>
+
+        <p>
+          <strong>Question 2:</strong> Do you see
+          <code>[SegScorer] Found X SEG DisplaySet(s):</code>?
+        </p>
+        <ul>
+          <li>✅ YES → Check if SeriesDescription or segmentLabels contain "Heart"</li>
+          <li>❌ NO → Timing issue: SEG files not loaded yet</li>
+        </ul>
+
+        <p>
+          <strong>Question 3:</strong> Do you see <code>✅ Found reference SEG DisplaySet:</code>?
+        </p>
+        <ul>
+          <li>✅ YES → Matching WORKED! Check why segmentation isn't loading</li>
+          <li>❌ NO → Fuzzy matching FAILED (metadata mismatch)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>Common Issues & Fixes</h2>
+
+      <details>
+        <summary><strong>Issue: URL parameters not detected at all</strong></summary>
+        <div style="padding: 10px 0">
+          <p><strong>Cause:</strong> SCORM iframe URL construction is broken</p>
+          <p><strong>Check:</strong> View source of SCORM index.html iframe src attribute</p>
+          <p>
+            <strong>Fix:</strong> Verify message-bridge.js correctly appends parameters in
+            startAssessment()
+          </p>
+        </div>
+      </details>
+
+      <details>
+        <summary><strong>Issue: Parameters detected but no SEG found</strong></summary>
+        <div style="padding: 10px 0">
+          <p><strong>Cause:</strong> SEG metadata doesn't match "Heart"</p>
+          <p>
+            <strong>Check:</strong> Console log showing SEG DisplaySet SeriesDescription and
+            segmentLabels
+          </p>
+          <p><strong>Fix:</strong> Either rename SEG file or improve fuzzy matching logic</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><strong>Issue: SEG found but not loading visually</strong></summary>
+        <div style="padding: 10px 0">
+          <p><strong>Cause:</strong> Segmentation created but rendering failed</p>
+          <p><strong>Check:</strong> Look for errors after "✅ Found reference SEG DisplaySet"</p>
+          <p><strong>Fix:</strong> Check viewport initialization and segment visibility logic</p>
+        </div>
+      </details>
+    </div>
+
+    <script>
+      function testDirectURL() {
+        const baseUrl = 'http://localhost:3000/seg-scorer';
+        const studyUID = document.getElementById('expected-study').textContent;
+        const patientId = document.getElementById('expected-patient').textContent;
+        const structure = document.getElementById('expected-structure').textContent;
+
+        const url = `${baseUrl}?StudyInstanceUIDs=${encodeURIComponent(studyUID)}&patientId=${encodeURIComponent(patientId)}&structure=${encodeURIComponent(structure)}`;
+
+        console.log('Opening OHIF with URL:', url);
+        window.open(url, '_blank');
+
+        alert(
+          '✅ OHIF should open in a new tab.\n\nCheck the CONSOLE (F12) in that tab for:\n• !!! URL Params Detected !!!\n• [SegScorer] messages'
+        );
+      }
+
+      function testWithIframe() {
+        const baseUrl = 'http://localhost:3000/seg-scorer';
+        const studyUID = document.getElementById('expected-study').textContent;
+        const patientId = document.getElementById('expected-patient').textContent;
+        const structure = document.getElementById('expected-structure').textContent;
+
+        const url = `${baseUrl}?StudyInstanceUIDs=${encodeURIComponent(studyUID)}&patientId=${encodeURIComponent(patientId)}&structure=${encodeURIComponent(structure)}`;
+
+        document.getElementById('iframe-container').style.display = 'block';
+        document.getElementById('test-iframe').src = url;
+
+        alert(
+          '✅ Iframe loaded below.\n\nOpen DevTools Console (F12) to see messages.\n\nNote: Some SCORM-specific features may not work in this test.'
+        );
+      }
+
+      function showConsoleInstructions() {
+        const section = document.getElementById('console-instructions');
+        section.style.display = section.style.display === 'none' ? 'block' : 'none';
+      }
+
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text.replace(/<br>/g, '\n').replace(/&nbsp;/g, ' '));
+        alert('✅ Copied to clipboard!');
+      }
+
+      // Log on page load
+      console.log('🔍 SCORM Parameter Test Tool loaded');
+      console.log('Instructions: Use the buttons above to run diagnostic tests');
+    </script>
+  </body>
+</html>

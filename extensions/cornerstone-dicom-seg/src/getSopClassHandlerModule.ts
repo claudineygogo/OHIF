@@ -59,6 +59,7 @@ function _getDisplaySetsFromSeries(
     wadoUri,
     isOverlayDisplaySet: true,
     label: SeriesDescription || `${i18n.t('Series')} ${SeriesNumber} - ${i18n.t('SEG')}`,
+    segmentLabels: _getSegmentLabels(instance),
   };
 
   const referencedSeriesSequence = instance.ReferencedSeriesSequence;
@@ -220,13 +221,17 @@ async function _loadSegments({
 
   if (!usedRecommendedDisplayCIELabValue) {
     // Display a notification about the non-utilization of RecommendedDisplayCIELabValue
-    uiNotificationService.show({
-      title: 'DICOM SEG import',
-      message:
-        'RecommendedDisplayCIELabValue not found for one or more segments. The default color was used instead.',
-      type: 'warning',
-      duration: 5000,
-    });
+    // Display a notification about the non-utilization of RecommendedDisplayCIELabValue
+    console.warn(
+      'DICOM SEG import: RecommendedDisplayCIELabValue not found for one or more segments. The default color was used instead.'
+    );
+    // uiNotificationService.show({
+    //   title: 'DICOM SEG import',
+    //   message:
+    //     'RecommendedDisplayCIELabValue not found for one or more segments. The default color was used instead.',
+    //   type: 'warning',
+    //   duration: 5000,
+    // });
   }
 
   Object.assign(segDisplaySet, results);
@@ -252,3 +257,14 @@ function getSopClassHandlerModule(params: OhifTypes.Extensions.ExtensionParams) 
 }
 
 export default getSopClassHandlerModule;
+
+function _getSegmentLabels(instance) {
+  if (!instance || !instance.SegmentSequence) {
+    return [];
+  }
+  const sequence = Array.isArray(instance.SegmentSequence)
+    ? instance.SegmentSequence
+    : [instance.SegmentSequence];
+
+  return sequence.map(item => item.SegmentLabel).filter(label => label);
+}

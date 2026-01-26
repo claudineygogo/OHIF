@@ -30,10 +30,10 @@ Instead of a single `reference_mask_normalized.json`, we will organize reference
 ```text
 Scorer/
 └── References/
-    ├── Patient_001/
-    │   ├── Brainstem.json
-    │   ├── OpticChiasm.json
-    │   └── ...
+    ├── SBRT_Spine/  <-- Folder name matches PatientID (0010,0020)
+    │   ├── Heart.json
+    │   ├── Liver.json
+    │   └── Stomach.json
     ├── Patient_002/
     │   ├── Liver.json
     │   └── ...
@@ -42,8 +42,9 @@ Scorer/
 ### B. The Context Flow
 
 **Scenario 1: SCORM Package (Managed Exercise)**
-1.  **SCORM Generator**: Captures `PatientID` and `StructureName`.
-2.  **SCORM Package**: Appends these as query parameters to the OHIF URL (e.g., `&patientId=Patient_001&structure=Brainstem`).
+1.  **SCORM Generator**: Captures `PatientID` and `StructureName` during package creation.
+    *   *Note*: The `PatientID` input must match the DICOM Tag (0010,0020) of the dataset (e.g., `SBRT_Spine`).
+2.  **SCORM Package**: Appends these as query parameters to the OHIF URL (e.g., `&patientId=SBRT_Spine&structure=Heart`).
 3.  **OHIF Viewer**: Detects these parameters and automatically starts the exercise for that structure.
 
 **Scenario 2: Standalone Mode (Manual Selection)**
