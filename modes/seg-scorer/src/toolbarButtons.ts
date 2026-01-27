@@ -283,7 +283,7 @@ const toolbarButtons: Button[] = [
       icon: 'tool-crosshair',
       label: i18n.t('Buttons:Crosshairs'),
       commands: {
-        commandName: 'setToolActiveToolbar',
+        commandName: 'toggleCrosshairs',
         commandOptions: {
           toolGroupIds: ['mpr'],
         },

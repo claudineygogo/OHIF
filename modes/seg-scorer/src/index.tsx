@@ -136,6 +136,33 @@ function modeFactory({ modeConfiguration }) {
         }
       });
 
+      commandsManager.registerCommand(contextName, 'toggleCrosshairs', ({ toolGroupIds }) => {
+        const toolGroupId = toolGroupIds ? toolGroupIds[0] : 'mpr';
+        const toolGroup = toolGroupService.getToolGroup(toolGroupId);
+
+        if (!toolGroup) {
+          return;
+        }
+
+        const activeTool = toolGroup.getActivePrimaryMouseButtonTool();
+        // Identify if Crosshairs is currently active
+        const isCrosshairsActive = activeTool === 'Crosshairs';
+
+        if (isCrosshairsActive) {
+          // Toggle Off -> Revert to a default tool (e.g. WindowLevel)
+          commandsManager.run('setToolActiveToolbar', {
+            toolName: 'WindowLevel',
+            toolGroupIds: [toolGroupId],
+          });
+        } else {
+          // Toggle On
+          commandsManager.run('setToolActiveToolbar', {
+            toolName: 'Crosshairs',
+            toolGroupIds: [toolGroupId],
+          });
+        }
+      });
+
       // CSS HACK: Hide specific header elements for this mode
       if (typeof document !== 'undefined') {
         const styleId = 'seg-scorer-mode-style';
