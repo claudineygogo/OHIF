@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Toolbox } from '@ohif/extension-default';
 import PanelSegmentation from './panels/PanelSegmentation';
 import ActiveViewportWindowLevel from './components/ActiveViewportWindowLevel';
+import StructureNameDisplay from './components/StructureNameDisplay';
 import PanelMeasurement from './panels/PanelMeasurement';
 import { SegmentationRepresentations } from '@cornerstonejs/tools/enums';
 import i18n from '@ohif/i18n';
@@ -50,6 +51,7 @@ const getPanelModule = ({ commandsManager, servicesManager, extensionManager }: 
 
     return (
       <>
+        {props.showStructureName && <StructureNameDisplay />}
         <Toolbox
           buttonSectionId={toolSectionMap[props.segmentationRepresentationType]}
           title={tValue}
@@ -104,6 +106,18 @@ const getPanelModule = ({ commandsManager, servicesManager, extensionManager }: 
         wrappedPanelSegmentationWithTools({
           ...props,
           segmentationRepresentationType: SegmentationRepresentations.Labelmap,
+        }),
+    },
+    {
+      name: 'panelSegmentationWithToolsLabelMapScorer',
+      iconName: 'tab-segmentation',
+      iconLabel: 'Segmentation',
+      label: i18n.t('SegmentationTable:Labelmap'),
+      component: props =>
+        wrappedPanelSegmentationWithTools({
+          ...props,
+          segmentationRepresentationType: SegmentationRepresentations.Labelmap,
+          showStructureName: true,
         }),
     },
     {

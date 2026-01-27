@@ -149,7 +149,7 @@ import {
   ToolSculptor,
   ToolLabelmapEditWithContour,
 } from './Sources/Tools';
-import IconTrophy from './Sources/IconTrophy';
+import IconTrophyNew from './Sources/IconTrophyNew';
 import IconPerformance from './Sources/IconPerformance';
 import ActionNewDialog from './Sources/ActionNewDialog';
 import NotificationInfo from './Sources/NotificationInfo';
@@ -800,7 +800,7 @@ export const Icons = {
   Undo,
   Redo,
   Redo,
-  'icon-trophy': (props: IconProps) => IconTrophy(props),
+  'icon-trophy': (props: IconProps) => IconTrophyNew(props),
   'icon-performance': (props: IconProps) => IconPerformance(props),
   JumpToSlice,
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ScorePanel from './ScorePanel';
+import StructureNameDisplay from './StructureNameDisplay';
 
 /**
  * ScorePanelWrapper listens for dice score updates and displays the ScorePanel.
@@ -60,6 +61,9 @@ const ScorePanelWrapper: React.FC = () => {
 
   return (
     <div>
+      <div style={{ margin: '8px 16px' }}>
+        <StructureNameDisplay />
+      </div>
       <ScorePanel diceScore={diceScore} />
       {diceScore !== null && (
         <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
@@ -80,6 +84,35 @@ const ScorePanelWrapper: React.FC = () => {
             onMouseOut={e => (e.currentTarget.style.backgroundColor = '#007bff')}
           >
             Submit Score
+          </button>
+        </div>
+      )}
+      {diceScore !== null && (
+        <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#d1d5db',
+              border: '1px solid #4b5563',
+              borderRadius: '4px',
+              padding: '8px 20px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              width: '100%',
+              marginTop: '0px',
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.borderColor = '#9ca3af';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.borderColor = '#4b5563';
+              e.currentTarget.style.color = '#d1d5db';
+            }}
+          >
+            Try Again
           </button>
         </div>
       )}

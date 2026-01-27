@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * ScorePanel component displays the Dice Score result after contour submission.
+ * ScorePanel component displays the DICE Score result after contour submission.
  * It shows the score prominently with appropriate formatting and styling.
  */
 interface ScorePanelProps {
@@ -67,7 +67,7 @@ const ScorePanel: React.FC<ScorePanelProps> = ({ diceScore }) => {
           color: '#d1d5db',
         }}
       >
-        Dice Score: {scorePercentage}%
+        DICE Score: {scorePercentage}%
       </div>
       <div
         style={{

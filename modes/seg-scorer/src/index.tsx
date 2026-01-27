@@ -16,7 +16,7 @@ const ohif = {
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
   labelMapSegmentationPanel:
-    '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMap',
+    '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMapScorer',
   contourSegmentationPanel:
     '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsContour',
   measurements: '@ohif/extension-cornerstone.panelModule.panelMeasurement',
@@ -79,6 +79,31 @@ function modeFactory({ modeConfiguration }) {
           id: 'panelSegmentation.showSubmitButton',
           visible: true,
         },
+        'layoutSelector.commonPresets': [
+          {
+            icon: 'layout-common-1x1',
+            commandOptions: {
+              numRows: 1,
+              numCols: 1,
+            },
+          },
+        ],
+        'layoutSelector.advancedPresetGenerator': () => [
+          {
+            title: 'MPR',
+            icon: 'layout-advanced-mpr',
+            commandOptions: {
+              protocolId: 'mpr',
+            },
+          },
+          {
+            title: 'Axial Primary',
+            icon: 'layout-advanced-axial-primary',
+            commandOptions: {
+              protocolId: 'primaryAxial',
+            },
+          },
+        ],
       });
 
       // CSS HACK: Hide specific header elements for this mode
@@ -117,11 +142,27 @@ function modeFactory({ modeConfiguration }) {
             body:not(.grading-complete) div[data-cy="scorePanel-btn"] {
               display: none !important;
             }
-            body.grading-complete div[data-cy="panelSegmentationWithToolsLabelMap-btn"] {
+            body.grading-complete div[data-cy="panelSegmentationWithToolsLabelMapScorer-btn"] {
               display: none !important;
             }
             body.grading-complete div[data-cy="scorePanel-btn"] {
               display: flex !important;
+            }
+
+            /* --- LAYOUT SELECTOR CUSTOMIZATION --- */
+            [data-cy="layout-custom-grid"] {
+              display: none !important;
+            }
+
+            /* --- VIEWPORT ELEMENTS HIDING --- */
+            /* Hide arrow-left / top-right element */
+            .pointer-events-auto.flex.items-center.absolute.top-\\[4px\\].right-\\[16px\\].right-viewport-scrollbar {
+              display: none !important;
+            }
+
+            /* Hide acquisition date / top-left overlay */
+            .absolute.pointer-events-none.viewport-overlay.overlay-top.left-viewport {
+              display: none !important;
             }
           `;
           document.head.appendChild(style);
@@ -144,17 +185,12 @@ function modeFactory({ modeConfiguration }) {
         'WindowLevel',
         'Pan',
         'Zoom',
-        'TrackballRotate',
-        'Capture',
-        'Layout',
+        'Reset',
         'Crosshairs',
-        'MoreTools',
+        'Layout',
       ]);
 
-      toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
-        'orientationMenu',
-        'dataOverlayMenu',
-      ]);
+      toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, []);
 
       toolbarService.updateSection(toolbarService.sections.viewportActionMenu.bottomMiddle, [
         'AdvancedRenderingControls',
@@ -252,6 +288,14 @@ function modeFactory({ modeConfiguration }) {
           })
         );
         console.log(`[SegScorer] Context set: ${pid} / ${struct}`);
+        // Dispatch event for UI updates (e.g. StructureNameDisplay)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('ohif:scorerContextUpdated', {
+              detail: { structureName: struct },
+            })
+          );
+        }
       };
 
       // Automatically load reference segmentation
@@ -278,8 +322,10 @@ function modeFactory({ modeConfiguration }) {
             ds =>
               ds.Modality === 'SEG' &&
               ((ds.SeriesDescription && ds.SeriesDescription.toLowerCase().includes(lowerTarget)) ||
-                (ds.segmentLabels &&
-                  ds.segmentLabels.some(label => label.toLowerCase().includes(lowerTarget))))
+                ((ds as unknown as Record<string, any>).segmentLabels &&
+                  (ds as unknown as Record<string, any>).segmentLabels.some((label: string) =>
+                    label.toLowerCase().includes(lowerTarget)
+                  )))
           );
         }
 
@@ -379,13 +425,16 @@ function modeFactory({ modeConfiguration }) {
                     // This is the preferred way in v3.8+ if available, but let's check legacy/default ways
                     if (panelService) {
                       // Activate the panel (makes it visible)
-                      panelService.activatePanel(cornerstone.labelMapSegmentationPanel);
+                      panelService.activatePanel(
+                        '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMapScorer',
+                        true
+                      );
                       // Or open it (expands the sidebar)
                       // Actually 'togglePanel' is common command.
                       // Let's assume manual toggle or activation.
                       // Ideally:
                       commandsManager.run('showPanel', {
-                        id: cornerstone.labelMapSegmentationPanel,
+                        id: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMapScorer',
                       });
                     }
                   } catch (e) {
@@ -417,7 +466,12 @@ function modeFactory({ modeConfiguration }) {
         // Extract PatientID from the first available display set if not in URL
         let currentPatientId = urlPatientId;
         if (!currentPatientId && displaySets.length > 0) {
-          const ds = displaySets[0] as any;
+          const ds = displaySets[0] as unknown as {
+            StudyInstanceUID?: string;
+            PatientID?: string;
+            images?: { PatientID: string }[];
+            instance?: { PatientID: string };
+          };
           if (ds.StudyInstanceUID) {
             const study = DicomMetadataStore.getStudy(ds.StudyInstanceUID);
             if (study) {
@@ -653,7 +707,7 @@ function modeFactory({ modeConfiguration }) {
               leftPanels: [],
               leftPanelResizable: true,
               rightPanels: [
-                cornerstone.labelMapSegmentationPanel,
+                '@ohif/extension-cornerstone.panelModule.panelSegmentationWithToolsLabelMapScorer',
                 // cornerstone.contourSegmentationPanel,
                 '@ohif/extension-default.panelModule.scorePanel',
               ],

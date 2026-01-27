@@ -91,8 +91,12 @@ const SidePanelWithServices = ({
         if (sidePanelExpanded || activatePanelEvent.forceActive) {
           const tabIndex = tabs.findIndex(tab => tab.id === activatePanelEvent.panelId);
           if (tabIndex !== -1) {
-            if (!closedManually) {
-              setSidePanelExpanded(true);
+            const shouldExpand = activatePanelEvent.forceActive || !closedManually;
+            if (shouldExpand) {
+              if (!sidePanelExpanded) {
+                setSidePanelExpanded(true);
+                onOpen?.();
+              }
             }
             setActiveTabIndex(tabIndex);
           }

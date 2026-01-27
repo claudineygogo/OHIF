@@ -26,9 +26,9 @@ function getPanelModule({ commandsManager, extensionManager, servicesManager }) 
     },
     {
       name: 'scorePanel',
-      iconName: 'icon-performance',
+      iconName: 'icon-trophy',
       iconLabel: 'Score',
-      label: 'Dice Score',
+      label: 'DICE Score',
       component: ScorePanelWrapper,
     },
   ];
