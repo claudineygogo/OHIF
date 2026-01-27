@@ -33,6 +33,18 @@ const StructureSelectionModal: React.FC<StructureSelectionModalProps> = ({
   const handleSegSelection = evt => {
     const segId = evt.target.value;
     setSelectedSegId(segId);
+
+    // Auto-submit immediately upon selection
+    if (segId) {
+      const seg = segDisplaySets.find(ds => ds.displaySetInstanceUID === segId);
+      if (seg) {
+        onSelect({
+          patientId,
+          structureName: seg.SeriesDescription || '',
+          selectedSegId: segId,
+        });
+      }
+    }
   };
 
   return (
@@ -65,17 +77,6 @@ const StructureSelectionModal: React.FC<StructureSelectionModalProps> = ({
             ))}
           </select>
         </div>
-      </div>
-
-      <div className="modal-actions">
-        <Button
-          onClick={handleSubmit}
-          type={ButtonEnums.type.primary}
-          disabled={!selectedSegId}
-          className="modal-btn"
-        >
-          Start
-        </Button>
       </div>
     </div>
   );

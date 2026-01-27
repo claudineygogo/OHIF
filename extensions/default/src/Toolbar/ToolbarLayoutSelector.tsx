@@ -113,9 +113,11 @@ function ToolbarLayoutSelectorWithServices({
     (commandOptions, isPreset) => {
       if (isPreset) {
         // Advanced preset selection
+        // Allow commandOptions to specify a custom command name
+        const { commandName = 'setHangingProtocol', ...options } = commandOptions;
         commandsManager.run({
-          commandName: 'setHangingProtocol',
-          commandOptions,
+          commandName,
+          commandOptions: options,
         });
       } else {
         // Common preset or custom grid selection

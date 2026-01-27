@@ -1091,93 +1091,83 @@ const commandsModule = ({
         // --- REVEAL REFERENCE CONTOUR ---
         if (referenceData && referenceData.non_zero_indices) {
           try {
-            console.log('Revealing pre-loaded reference segmentation...');
+            console.log('Revealing pre-loaded reference segmentation on ALL viewports...');
 
-            const { activeViewportId } = viewportGridService.getState();
+            const { viewports } = viewportGridService.getState();
+            // Use Array.from to be safe if keys() returns an iterator
+            const viewportIds = Array.from(viewports.keys());
 
-            // Use the stored reference segmentation ID
-            if (storedReferenceSegmentationId) {
-              console.log(
-                `Using stored reference segmentation ID: ${storedReferenceSegmentationId}`
-              );
+            for (const viewportId of viewportIds) {
+              // Use the stored reference segmentation ID
+              if (storedReferenceSegmentationId) {
+                // Check if representation already exists
+                const referenceReps = segmentationService.getSegmentationRepresentations(
+                  viewportId,
+                  { segmentationId: storedReferenceSegmentationId }
+                );
 
-              // Check if representation already exists
-              const referenceReps = segmentationService.getSegmentationRepresentations(
-                activeViewportId,
-                { segmentationId: storedReferenceSegmentationId }
-              );
+                if (referenceReps.length === 0) {
+                  await segmentationService.addSegmentationRepresentation(viewportId, {
+                    segmentationId: storedReferenceSegmentationId,
+                  });
+                }
 
-              if (referenceReps.length === 0) {
-                console.log('Adding reference segmentation representation...');
-                await segmentationService.addSegmentationRepresentation(activeViewportId, {
-                  segmentationId: storedReferenceSegmentationId,
-                });
-              } else {
-                console.log('Reference segmentation representation already exists.');
+                // Reveal segment 1 (assuming single segment for reference)
+                const referenceSegmentation = segmentationService.getSegmentation(
+                  storedReferenceSegmentationId
+                );
+                if (referenceSegmentation && referenceSegmentation.segments) {
+                  const segmentIndices = Object.keys(referenceSegmentation.segments);
+                  for (const segmentIndex of segmentIndices) {
+                    segmentationService.setSegmentVisibility(
+                      viewportId,
+                      storedReferenceSegmentationId,
+                      parseInt(segmentIndex),
+                      true
+                    );
+                    // Set to GREEN
+                    segmentationService.setSegmentColor(
+                      viewportId,
+                      storedReferenceSegmentationId,
+                      parseInt(segmentIndex),
+                      [0, 255, 0, 255]
+                    );
+                  }
+                }
               }
 
-              // Reveal segment 1 (assuming single segment for reference)
-              const referenceSegmentation = segmentationService.getSegmentation(
-                storedReferenceSegmentationId
-              );
-              if (referenceSegmentation && referenceSegmentation.segments) {
-                const segmentIndices = Object.keys(referenceSegmentation.segments);
+              // Also ensure the USER segmentation is BLUE and VISIBLE
+              const userSegmentation = segmentationService.getSegmentation(segmentationId);
+              if (userSegmentation && userSegmentation.segments) {
+                // Check if representation already exists
+                const userReps = segmentationService.getSegmentationRepresentations(viewportId, {
+                  segmentationId: segmentationId,
+                });
+
+                if (userReps.length === 0) {
+                  await segmentationService.addSegmentationRepresentation(viewportId, {
+                    segmentationId: segmentationId,
+                  });
+                }
+
+                const segmentIndices = Object.keys(userSegmentation.segments);
                 for (const segmentIndex of segmentIndices) {
                   segmentationService.setSegmentVisibility(
-                    activeViewportId,
-                    storedReferenceSegmentationId,
+                    viewportId,
+                    segmentationId,
                     parseInt(segmentIndex),
                     true
                   );
-                  // Set to GREEN
                   segmentationService.setSegmentColor(
-                    activeViewportId,
-                    storedReferenceSegmentationId,
+                    viewportId,
+                    segmentationId,
                     parseInt(segmentIndex),
-                    [0, 255, 0, 255]
+                    [30, 25, 226, 255]
                   );
                 }
-                console.log(`Reference contour revealed: ${storedReferenceSegmentationId}`);
               }
-            } else {
-              console.warn('No stored reference segmentation ID found.');
             }
-
-            // Also ensure the USER segmentation is RED and VISIBLE
-            const userSegmentation = segmentationService.getSegmentation(segmentationId);
-            if (userSegmentation && userSegmentation.segments) {
-              // Check if representation already exists
-              const userReps = segmentationService.getSegmentationRepresentations(
-                activeViewportId,
-                { segmentationId: segmentationId }
-              );
-
-              if (userReps.length === 0) {
-                console.log('Adding user segmentation representation...');
-                await segmentationService.addSegmentationRepresentation(activeViewportId, {
-                  segmentationId: segmentationId,
-                });
-              } else {
-                console.log('User segmentation representation already exists.');
-              }
-
-              const segmentIndices = Object.keys(userSegmentation.segments);
-              for (const segmentIndex of segmentIndices) {
-                segmentationService.setSegmentVisibility(
-                  activeViewportId,
-                  segmentationId,
-                  parseInt(segmentIndex),
-                  true
-                );
-                segmentationService.setSegmentColor(
-                  activeViewportId,
-                  segmentationId,
-                  parseInt(segmentIndex),
-                  [30, 25, 226, 255]
-                );
-              }
-              console.log(`Ensured user segmentation ${segmentationId} is BLUE and VISIBLE`);
-            }
+            console.log(`Ensured segmentations are visible on ${viewportIds.length} viewports`);
           } catch (error) {
             console.error('Error revealing reference segmentation:', error);
             uiNotificationService.show({

@@ -94,6 +94,7 @@ function modeFactory({ modeConfiguration }) {
             icon: 'layout-advanced-mpr',
             commandOptions: {
               protocolId: 'mpr',
+              commandName: 'setHangingProtocolWithLoader',
             },
           },
           {
@@ -101,9 +102,38 @@ function modeFactory({ modeConfiguration }) {
             icon: 'layout-advanced-axial-primary',
             commandOptions: {
               protocolId: 'primaryAxial',
+              commandName: 'setHangingProtocolWithLoader',
             },
           },
         ],
+      });
+
+      // Register custom command for layout switching with loader
+      const contextName = 'seg-scorer';
+      commandsManager.createContext(contextName);
+      commandsManager.registerCommand(contextName, 'setHangingProtocolWithLoader', async props => {
+        uiModalService.show({
+          content: LoadingModal,
+          contentProps: {
+            message: 'Loading Layout...',
+          },
+          title: 'Please Wait',
+          shouldCloseOnOverlayClick: false,
+        });
+
+        // Wait for UI to paint
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        try {
+          await commandsManager.run('setHangingProtocol', props);
+        } finally {
+          // Keep loader for a moment to ensure rendering completes?
+          // Or hide immediately? User layout sync logic might also run.
+          // Let's add a small delay to ensure the heavy tasks in 'setHangingProtocol' which might be async-ish (like volume building)
+          // have visually started.
+          // Actually, the hanging protocol service is what takes time.
+          setTimeout(() => uiModalService.hide(), 500);
+        }
       });
 
       // CSS HACK: Hide specific header elements for this mode
@@ -269,6 +299,7 @@ function modeFactory({ modeConfiguration }) {
       // Track if we've already loaded the reference segmentation
       let referenceSegmentationLoaded = false;
       let isReferenceSegmentationLoading = false;
+      let referenceSegmentationId = null;
 
       // PARSE URL PARAMS
       const searchParams = new URLSearchParams(window.location.search);
@@ -297,6 +328,126 @@ function modeFactory({ modeConfiguration }) {
           );
         }
       };
+
+      // Helper to ensure segmentation is added and has correct visibility in a viewport
+      const updateViewportSegmentation = async (viewportId, segId, shouldHide) => {
+        // 1. Ensure representation exists
+        const segmentationRepresentations =
+          segmentationService.getSegmentationRepresentations(viewportId);
+        const hasRepresentation = segmentationRepresentations.some(
+          rep => rep.segmentationId === segId
+        );
+
+        if (!hasRepresentation) {
+          await segmentationService.addSegmentationRepresentation(viewportId, {
+            segmentationId: segId,
+          });
+        }
+
+        // 2. Set Visibility
+        if (shouldHide) {
+          const segmentation = segmentationService.getSegmentation(segId);
+          if (segmentation && segmentation.segments) {
+            const segmentIndices = Object.keys(segmentation.segments);
+            for (const segmentIndex of segmentIndices) {
+              segmentationService.setSegmentVisibility(
+                viewportId,
+                segId,
+                parseInt(segmentIndex),
+                false
+              );
+            }
+          }
+        } else {
+          // If we represent it newly in "grading-complete" state (or it was hidden), ensure it is visible?
+          // The user requirement implies it "appears" when submitted.
+          // New representations default to visible.
+          // But if it was previously hidden in this viewport, we might need to show it?
+          // This helper is called on layout change.
+          // If we simply don't hide it, it should be fine for new viewports.
+          // For existing viewports, if it was hidden, the "Submit" action should have shown it.
+          // Use case: User is in review mode, changes layout. New viewport needs rep.
+          // Defaults to visible. Safe.
+        }
+      };
+
+      const syncReferenceSegmentationOnLayout = async () => {
+        if (!referenceSegmentationId) {
+          return;
+        }
+        const state = viewportGridService.getState();
+        const viewports = Array.from(state.viewports.keys());
+
+        // Check grading state
+        const isGradingComplete = document.body.classList.contains('grading-complete');
+        const shouldHide = !isGradingComplete;
+
+        // Apply to all viewports
+        for (const viewportId of viewports) {
+          // 1. Ensure Reference Segmentation is present (and set visibility)
+          await updateViewportSegmentation(viewportId, referenceSegmentationId, shouldHide);
+
+          // 2. Ensure User Segmentation is ON TOP (Rendered Last)
+          const allSegmentations = segmentationService.getSegmentations();
+          const userSegmentations = allSegmentations.filter(
+            s => s.segmentationId !== referenceSegmentationId
+          );
+
+          for (const userSeg of userSegmentations) {
+            const userSegId = userSeg.segmentationId;
+
+            // Check if it exists in viewport
+            const reps = segmentationService.getSegmentationRepresentations(viewportId);
+            const isPresent = reps.some(r => r.segmentationId === userSegId);
+
+            // Re-stacking logic:
+            // If the user segmentation acts as the "active" layer, it should be top-most.
+            // If we just added the Reference layer, it might now be on top.
+            // By Removing and Re-Adding the User layer, we move it to the end of the render list.
+            if (isPresent) {
+              // Only re-stack if Reference is ALSO present (otherwise order doesn't matter)
+              const refIsPresent = reps.some(r => r.segmentationId === referenceSegmentationId);
+              if (refIsPresent) {
+                // Get config before removing?
+                // The service preserves segmentation data, but representation config (color/visibility) might reset?
+                // Usually Segment visibility is stored in global state or hydrated config.
+                // Ideally we shouldn't flicker.
+                // Check indices?
+                const refIndex = reps.findIndex(r => r.segmentationId === referenceSegmentationId);
+                const userIndex = reps.findIndex(r => r.segmentationId === userSegId);
+
+                if (refIndex > userIndex) {
+                  // Reference is higher up (later in array) than User. Swap needed.
+                  // Remove User
+                  // Note: 'removeSegmentationRepresentations' takes an array of specs? No, singular in our helper usage.
+                  // Actually segmentationService.removeSegmentationRepresentations(viewportId, spec)
+                  segmentationService.removeSegmentationRepresentations(viewportId, {
+                    segmentationId: userSegId,
+                  });
+                  // Add User back
+                  await segmentationService.addSegmentationRepresentation(viewportId, {
+                    segmentationId: userSegId,
+                  });
+                }
+              }
+            } else {
+              // If User layer exists globally but not in this viewport (e.g. new viewport), add it!
+              // This ensures multi-viewport sync for user layer too.
+              await segmentationService.addSegmentationRepresentation(viewportId, {
+                segmentationId: userSegId,
+              });
+            }
+          }
+        }
+      };
+
+      // Subscribe to layout changes
+      _unsubscriptions.push(
+        viewportGridService.subscribe(
+          viewportGridService.EVENTS.GRID_STATE_CHANGED,
+          syncReferenceSegmentationOnLayout
+        )
+      );
 
       // Automatically load reference segmentation
       // MODIFIED: Now accepts a specific targetSegId (simulating user selection)
@@ -359,29 +510,20 @@ function modeFactory({ modeConfiguration }) {
 
             // Store the ID
             commandsManager.run('setReferenceSegmentationId', { segmentationId });
+            referenceSegmentationId = segmentationId;
 
-            // Add to active viewport
+            // Add to ALL viewports
+            const state = viewportGridService.getState();
+            const viewports = Array.from(state.viewports.keys());
+
+            for (const viewportId of viewports) {
+              // Add and Hide
+              await updateViewportSegmentation(viewportId, segmentationId, true);
+            }
+
+            // Create User Layer
             const activeViewportId = viewportGridService.getActiveViewportId();
             if (activeViewportId) {
-              await segmentationService.addSegmentationRepresentation(activeViewportId, {
-                segmentationId,
-              });
-
-              // HIDE IT
-              const segmentation = segmentationService.getSegmentation(segmentationId);
-              if (segmentation && segmentation.segments) {
-                const segmentIndices = Object.keys(segmentation.segments);
-                for (const segmentIndex of segmentIndices) {
-                  segmentationService.setSegmentVisibility(
-                    activeViewportId,
-                    segmentationId,
-                    parseInt(segmentIndex),
-                    false
-                  );
-                }
-              }
-
-              // Create User Layer
               const newSegmentationId = (await commandsManager.run('createLabelmapForViewport', {
                 viewportId: activeViewportId,
               })) as string;
@@ -632,7 +774,7 @@ function modeFactory({ modeConfiguration }) {
         }
       }
     },
-    onModeExit: ({ servicesManager }: withAppTypes) => {
+    onModeExit: ({ servicesManager, commandsManager }: withAppTypes) => {
       const {
         toolGroupService,
         syncGroupService,
@@ -641,6 +783,8 @@ function modeFactory({ modeConfiguration }) {
         uiDialogService,
         uiModalService,
       } = servicesManager.services;
+
+      commandsManager.clearContext('seg-scorer');
 
       // Remove the custom style injected for this mode
       if (typeof document !== 'undefined') {
