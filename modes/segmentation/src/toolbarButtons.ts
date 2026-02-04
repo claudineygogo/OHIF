@@ -1238,28 +1238,6 @@ const toolbarButtons: Button[] = [
       ],
     },
   },
-  {
-    id: 'SubmitContour',
-    uiType: 'ohif.toolButton',
-    props: {
-      icon: 'tool-more-menu',
-      label: 'Submit Contour',
-      tooltip: 'Submit Contour for Grading',
-      commands: 'submitContourForGrading',
-      evaluate: 'evaluate.action',
-    },
-  },
-  {
-    id: 'SubmitScoreToLMS',
-    uiType: 'ohif.toolButton',
-    props: {
-      icon: 'icon-status-tracking',
-      label: 'Submit Score to LMS',
-      tooltip: 'Submit your final score to the Learning Management System',
-      commands: 'submitScoreToLMS',
-      evaluate: 'evaluate.action',
-    },
-  },
 ];
 
 export default toolbarButtons;

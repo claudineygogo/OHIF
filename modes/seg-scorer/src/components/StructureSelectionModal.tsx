@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button, ButtonEnums } from '@ohif/ui';
 
 import './StructureSelectionModal.css';
 
@@ -17,18 +16,6 @@ const StructureSelectionModal: React.FC<StructureSelectionModalProps> = ({
   patientId,
 }) => {
   const [selectedSegId, setSelectedSegId] = useState('');
-
-  const handleSubmit = () => {
-    // Derive structure name from selected SEG
-    const seg = segDisplaySets.find(ds => ds.displaySetInstanceUID === selectedSegId);
-    if (patientId && selectedSegId && seg) {
-      onSelect({
-        patientId,
-        structureName: seg.SeriesDescription || '',
-        selectedSegId,
-      });
-    }
-  };
 
   const handleSegSelection = evt => {
     const segId = evt.target.value;
@@ -49,18 +36,9 @@ const StructureSelectionModal: React.FC<StructureSelectionModalProps> = ({
 
   return (
     <div className="structure-selection-modal">
-      <h3 className="modal-title">Select Context</h3>
-
       <div className="modal-content">
         <div className="input-group">
-          <label className="text-gray-400 text-sm">Patient ID</label>
-          <div className="text-white text-lg font-bold p-2 bg-secondary-dark rounded">
-            {patientId || 'Unknown'}
-          </div>
-        </div>
-
-        <div className="input-group">
-          <label className="text-gray-400 text-sm">Reference Structure</label>
+          <label className="text-gray-400 text-sm">Select Reference Structure</label>
           <select
             value={selectedSegId}
             onChange={handleSegSelection}
