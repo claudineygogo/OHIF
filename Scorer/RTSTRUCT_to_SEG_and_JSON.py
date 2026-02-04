@@ -42,13 +42,16 @@ def load_reference_geometry(input_dir):
     z_positions = []
     dimensions = None
 
-    # Use pathlib for this helper generally
-    # Scan all files, not just *.dcm
+    path_input = Path(input_dir)
+    if not path_input.exists():
+        return None, None, None
+
+    # Scan all files to find CTs
     files = [f for f in path_input.iterdir() if f.is_file()]
 
     for f in files:
         try:
-            # Fast header read, force=True allows reading files without standard header/extension
+            # Fast header read
             ds = pydicom.dcmread(f, stop_before_pixels=True, force=True)
             if ds.Modality == 'CT':
                 z = float(ds.ImagePositionPatient[2])
@@ -59,7 +62,6 @@ def load_reference_geometry(input_dir):
             continue
 
     if not z_positions:
-        # It's possible we are in a text only dir, but caller handles None
         return None, None, None
 
     # Sort Z positions (Image Position Patient Z)
@@ -111,9 +113,21 @@ def find_dicom_series_in_dir(directory, target_series_uid=None):
         if target_series_uid in series_ids:
             selected_series_id = target_series_uid
         else:
-            return None, None, None
+            # Fallback: sometimes ITK Series IDs don't match standard UIDs perfectly
+            # or the user wants us to guess. But strictly we should match.
+            # Let's try to return the largest series if we can't find exact match,
+            # BUT warning this might be wrong for multi-series folders.
+            logging.warning(f"Target Series UID {target_series_uid} not found in ITK IDs: {series_ids}. Trying best guess.")
+            # Heuristic: the series with most files is likely the CT volume
+            max_files = 0
+            best_id = None
+            for sid in series_ids:
+                fnames = reader.GetGDCMSeriesFileNames(directory, sid)
+                if len(fnames) > max_files:
+                    max_files = len(fnames)
+                    best_id = sid
+            selected_series_id = best_id
     else:
-        # Heuristic: pick the first one
         selected_series_id = series_ids[0]
 
     dicom_names = reader.GetGDCMSeriesFileNames(directory, selected_series_id)
@@ -171,10 +185,12 @@ def process_rtstruct(rtstruct_path, output_dir):
 
     # Look for images in the same directory as RTSTRUCT
     input_dir = os.path.dirname(rtstruct_path)
+
+    # Try finding series
     itk_image, source_datasets, loaded_series_uid = find_dicom_series_in_dir(input_dir, ref_series_uid)
 
     if itk_image is None:
-        logging.error(f"Could not find Referenced Series {ref_series_uid} in {input_dir}")
+        logging.error(f"Could not find Referenced Series {ref_series_uid} (or suitable fallback) in {input_dir}")
         return []
 
     width, height, depth = itk_image.GetSize()
@@ -407,30 +423,52 @@ def get_indices_from_seg(dcm_path, z_map, sorted_zs, ref_dims):
 
 def main():
     parser = argparse.ArgumentParser(description="Convert RTSTRUCT to SEG, then SEG to JSON Reference.")
-    parser.add_argument("input_dir", nargs="?", default=os.getcwd(), help="Directory containing Images and RTSTRUCT")
+    parser.add_argument("input_dir", nargs="?", default=None, help="Directory containing Images and RTSTRUCT")
     parser.add_argument("--references_dir", default="References", help="Output directory for JSON files (relative to script or absolute)")
 
     args = parser.parse_args()
-    input_dir = Path(args.input_dir).absolute()
+
+    # -------------------------------------------------------------------------
+    # INTELLIGENT DEFAULT PATH SELECTION
+    # -------------------------------------------------------------------------
+    script_dir = Path(__file__).parent.absolute()
+
+    if args.input_dir:
+        input_dir = Path(args.input_dir).absolute()
+    else:
+        # User didn't specify. Let's try to be smart.
+        cwd = Path(os.getcwd())
+
+        # 1. Is the current folder fully populated?
+        if any(cwd.glob("*.dcm")):
+            input_dir = cwd
+        else:
+            # 2. Does "Data to be converted" exist relative to script?
+            default_data_dir = script_dir / "Data to be converted"
+            if default_data_dir.exists() and any(default_data_dir.glob("*.dcm")):
+                logging.info(f"No input specified and current dir empty. Defaulting to: {default_data_dir}")
+                input_dir = default_data_dir
+            else:
+                logging.error("No DICOM files found in current directory and 'Data to be converted' not found/empty.")
+                logging.error("Usage: python RTSTRUCT_to_SEG_and_JSON.py [INPUT_DIRECTORY]")
+                return
+
+    if not input_dir.exists():
+        logging.error(f"Input directory not found: {input_dir}")
+        return
 
     # Check if references dir is absolute or relative
     if os.path.isabs(args.references_dir):
         references_base_dir = Path(args.references_dir)
     else:
         # Default to script dir / References if relative
-        script_dir = Path(__file__).parent.absolute()
         references_base_dir = script_dir / args.references_dir
-
-    if not input_dir.exists():
-        logging.error(f"Input directory not found: {input_dir}")
-        return
 
     logging.info(f"Scanning: {input_dir}")
     logging.info(f"Target JSON Directory: {references_base_dir}")
 
     # 1. Scan for RTSTRUCTs
     rtstruct_files = []
-    # Scan all files to find RS files or others without .dcm extension
     files_to_scan = [f for f in input_dir.iterdir() if f.is_file()]
 
     for f in files_to_scan:
@@ -461,7 +499,6 @@ def main():
     logging.info(f"Successfully generated {len(all_generated_segs)} SEG files.")
 
     # 3. Build Reference Geometry for JSON conversion
-    # We must scan the directory again (or reuse info) to get the GLOBAL Z-map for the JSONs
     logging.info("Building Reference Geometry for JSON conversion...")
     z_map, sorted_zs, ref_dims = load_reference_geometry(input_dir)
 
@@ -473,7 +510,6 @@ def main():
     logging.info("Converting Generated SEGs to JSON...")
 
     for seg_path in all_generated_segs:
-        # Verify it exists
         if not os.path.exists(seg_path):
             continue
 
@@ -485,7 +521,6 @@ def main():
         patient_id, structure_name, indices = result
 
         if indices is not None and len(indices) > 0:
-            # Create output directory: References/<PatientID>/
             patient_dir = references_base_dir / patient_id
             patient_dir.mkdir(parents=True, exist_ok=True)
 
@@ -513,4 +548,4 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
     finally:
-        input("\nPress Enter to close...")
+        pass

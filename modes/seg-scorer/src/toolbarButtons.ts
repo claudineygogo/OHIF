@@ -268,7 +268,7 @@ const toolbarButtons: Button[] = [
   },
   {
     id: 'Layout',
-    uiType: 'ohif.layoutSelector',
+    uiType: 'ohif.layoutSelectorSegScorer',
     props: {
       rows: 3,
       columns: 4,
