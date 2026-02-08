@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # NGINX GATEWAY (The Guard)
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: production_gateway
+    restart: always
+    ports:
+      - '80:80'
+      # - "443:443" # Uncomment if installing certs directly in Nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - orthanc
+      - viewer
+      - scorer
+    networks:
+      - production_net
+
+  # ----------------------------------------------------------------------------
+  # OHIF VIEWER (The UI)
+  # ----------------------------------------------------------------------------
+  viewer:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: production_viewer
+    restart: always
+    volumes:
+      # Inject our production config over the default one
+      - ../platform/app/public/config/production.js:/usr/share/nginx/html/app-config.js:ro
+    networks:
+      - production_net
+
+  # ----------------------------------------------------------------------------
+  # ORTHANC (The PACS)
+  # ----------------------------------------------------------------------------
+  orthanc:
+    image: iodone/orthanc-plugins:1.12.3
+    container_name: production_orthanc
+    restart: always
+    environment:
+      ORTHANC_NAME: 'ORTHANC'
+      # SECURE THIS IN PRODUCTION!
+      # These controls the internal Orthanc user.
+      # The Nginx proxy injects these credentials automatically.
+      ORTHANC_REGISTERED_USERS: |
+        {
+          "admin": "admin"
+        }
+      ORTHANC_AUTHENTICATION_ENABLED: 'true'
+      ORTHANC_REMOTE_ACCESS_ALLOWED: 'true' # Allowed because it's inside the docker network
+      ENABLE_DICOM_WEB: 'true'
+      DICOM_WEB_ROOT: '/dicom-web/'
+    volumes:
+      - orthanc_db:/var/lib/orthanc/db
+    networks:
+      - production_net
+
+  # ----------------------------------------------------------------------------
+  # SCORER SERVICE (The AI/Analysis)
+  # ----------------------------------------------------------------------------
+  scorer:
+    build:
+      context: ../Scorer
+      dockerfile: Dockerfile
+    container_name: production_scorer
+    restart: always
+    environment:
+      FLASK_ENV: production
+    volumes:
+      # Map the References folder so you can update them without rebuilding
+      - ../Scorer/References:/app/References
+    networks:
+      - production_net
+
+volumes:
+  orthanc_db:
+
+networks:
+  production_net:
+    driver: bridge
