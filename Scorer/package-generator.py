@@ -54,8 +54,8 @@ class ScormPackageGenerator:
         manifest_path = package_dir / 'imsmanifest.xml'
         content = manifest_path.read_text(encoding='utf-8')
 
-        readable_title = case_name.replace('-', ' ').title()
-        full_title = f"Medical Segmentation - {readable_title}"
+        # Use case_name directly to preserve user formatting (e.g. SBRT_Spine)
+        full_title = f"Medical Segmentation - {case_name}"
 
         new_content = re.sub(r'<title>.*?</title>', f'<title>{full_title}</title>', content)
 
@@ -119,53 +119,81 @@ def get_downloads_folder():
 
 def get_gui_inputs():
     """
-    Displays a GUI window to collect Case Name, OHIF URL, Patient ID, and Structure.
+    Displays a GUI window to collect OHIF URL, Patient ID, and Structure.
+    Auto-generates Case Name as 'PatientID (Structure)'.
     Returns a tuple (case_name, ohif_url, patient_id, structure_name) or (None, None, None, None) if cancelled.
     """
     root = tk.Tk()
     root.title("SCORM Package Generator")
-    root.geometry("500x350")
+    root.geometry("500x380")
+
+    # Modern Dark Theme Colors
+    BG_COLOR = "#2b2b2b"
+    FG_COLOR = "#ffffff"
+    ENTRY_BG = "#3b3b3b"
+    ENTRY_FG = "#ffffff"
+    BUTTON_BG = "#007bff"
+    BUTTON_FG = "#ffffff"
+    BUTTON_ACTIVE_BG = "#0056b3"
+
+    root.configure(bg=BG_COLOR)
 
     # Center window
     root.eval('tk::PlaceWindow . center')
 
     inputs = {"case_name": None, "ohif_url": None, "patient_id": None, "structure_name": None}
 
-    tk.Label(root, text="Case Name (e.g., lung-nodule-1):").pack(pady=(20, 5))
-    case_entry = tk.Entry(root, width=40)
-    case_entry.pack()
+    # Styles
+    label_font = ("Segoe UI", 10)
+    entry_font = ("Segoe UI", 10)
 
-    tk.Label(root, text="OHIF URL:").pack(pady=(10, 5))
-    url_entry = tk.Entry(root, width=40)
-    url_entry.pack()
+    def create_label(text):
+        lbl = tk.Label(root, text=text, bg=BG_COLOR, fg=FG_COLOR, font=label_font)
+        lbl.pack(pady=(15, 5))
+        return lbl
 
-    tk.Label(root, text="Patient ID (DICOM Tag 0010,0020):").pack(pady=(10, 5))
-    patient_entry = tk.Entry(root, width=40)
-    patient_entry.insert(0, "SBRT_Spine") # Default for convenience
-    patient_entry.pack()
+    def create_entry(default_text=""):
+        ent = tk.Entry(root, width=45, bg=ENTRY_BG, fg=ENTRY_FG,
+                       insertbackground="white", relief="flat", font=entry_font)
+        # Add internal padding
+        ent.pack(ipady=4)
+        if default_text:
+            ent.insert(0, default_text)
+        return ent
 
-    tk.Label(root, text="Structure Name (e.g. Heart):").pack(pady=(10, 5))
-    structure_entry = tk.Entry(root, width=40)
-    structure_entry.pack()
+    create_label("OHIF URL:")
+    url_entry = create_entry()
+
+    create_label("Patient ID (DICOM Tag 0010,0020):")
+    patient_entry = create_entry(default_text="SBRT_Spine")
+
+    create_label("Structure Names (separated by ';'):")
+    structure_entry = create_entry()
 
     def on_submit():
-        case = case_entry.get().strip()
         url = url_entry.get().strip()
         patient = patient_entry.get().strip()
-        structure = structure_entry.get().strip()
+        structure_input = structure_entry.get().strip()
 
-        if not case or not url or not patient or not structure:
-            messagebox.showerror("Error", "All fields (Case, URL, Patient ID, Structure) are required.")
+        if not url or not patient or not structure_input:
+            messagebox.showerror("Error", "All fields (URL, Patient ID, Structure) are required.")
             return
 
-        inputs["case_name"] = case
+        # Pass the raw structure input to main for processing
+        # We don't generate a single 'case_name' anymore, so we can pass None or a placeholder
+
+        inputs["case_name"] = "MULTI_BATCH"
         inputs["ohif_url"] = url
         inputs["patient_id"] = patient
-        inputs["structure_name"] = structure
+        inputs["structure_name"] = structure_input
         root.quit() # Stop mainloop
         root.destroy() # Close window
 
-    tk.Button(root, text="Generate Package", command=on_submit, bg="#007bff", fg="white").pack(pady=20)
+    submit_btn = tk.Button(root, text="Generate Package", command=on_submit,
+                           bg=BUTTON_BG, fg=BUTTON_FG,
+                           activebackground=BUTTON_ACTIVE_BG, activeforeground="white",
+                           relief="flat", font=("Segoe UI", 10, "bold"), padx=20, pady=8, cursor="hand2")
+    submit_btn.pack(pady=30)
 
     # Handle window close button
     def on_closing():
@@ -181,9 +209,10 @@ def get_gui_inputs():
 def main():
     try:
         # 1. Get Inputs via GUI
-        case_name, ohif_url, patient_id, structure_name = get_gui_inputs()
+        # Note: 'case_name' is returned as a placeholder "MULTI_BATCH" now
+        _, ohif_url, patient_id, structure_name_input = get_gui_inputs()
 
-        if not case_name or not ohif_url or not patient_id or not structure_name:
+        if not ohif_url or not patient_id or not structure_name_input:
             # Should be handled by sys.exit in on_closing, but just in case
             return
 
@@ -197,14 +226,36 @@ def main():
             messagebox.showerror("Error", f"Template directory not found at:\n{template_dir}")
             return
 
-        # 3. Generate Package
+        # 3. Generate Packages
         generator = ScormPackageGenerator(template_dir, output_dir)
-        zip_path = generator.create_package(case_name, ohif_url, patient_id, structure_name)
 
-        messagebox.showinfo("Success", f"Package generated successfully!\n\nSaved to:\n{zip_path}")
+        # Split structures by semicolon
+        structures = [s.strip() for s in structure_name_input.split(';') if s.strip()]
+
+        generated_files = []
+        errors = []
+
+        for struct in structures:
+            try:
+                # Generate specific case name for this structure
+                current_case_name = f"{patient_id} ({struct})"
+
+                zip_path = generator.create_package(current_case_name, ohif_url, patient_id, struct)
+                generated_files.append(Path(zip_path).name)
+            except Exception as e:
+                errors.append(f"Failed to generate for '{struct}': {str(e)}")
+
+        # 4. Show Summary
+        if not errors:
+            file_list = "\n".join(generated_files)
+            messagebox.showinfo("Success", f"Successfully generated {len(generated_files)} packages!\n\nFiles:\n{file_list}\n\nSaved to:\n{output_dir}")
+        else:
+            success_msg = f"Generated {len(generated_files)} packages.\n" if generated_files else ""
+            error_msg = "\n".join(errors)
+            messagebox.showwarning("Partial Success/Error", f"{success_msg}\nErrors occurred:\n{error_msg}\n\nCheck output folder for any successful files.")
 
     except Exception as e:
-        messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
+        messagebox.showerror("Error", f"An unexpected error occurred:\n{str(e)}")
         # Print stack trace to console just in case
         import traceback
         traceback.print_exc()

@@ -29,10 +29,10 @@ The `RTSTRUCT_to_SEG_and_JSON.py` script is a utility designed to convert legacy
 python RTSTRUCT_to_SEG_and_JSON.py [INPUT_DIRECTORY]
 ```
 
-**Auto-Detection:**
-If no input directory is provided, the script attempts to look in:
-1. The current working directory.
-2. A default folder named `Data to be converted` located next to the script.
+**Folder Selection:**
+If no input directory is provided via the command line, the script will open a **folder selection dialog**.
+- The dialog opens by default to `Data to be converted` (if it exists).
+- The user can navigate to and select any folder containing the DICOM files.
 
 ## Data Involved
 
